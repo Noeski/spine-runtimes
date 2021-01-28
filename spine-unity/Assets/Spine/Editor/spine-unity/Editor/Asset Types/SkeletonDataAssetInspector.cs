@@ -741,7 +741,7 @@ namespace Spine.Unity.Editor {
 		#endregion
 	}
 
-	internal class SkeletonInspectorPreview {
+	public class SkeletonInspectorPreview {
 		Color OriginColor = new Color(0.3f, 0.3f, 0.3f, 1);
 		static readonly int SliderHash = "Slider".GetHashCode();
 
@@ -782,6 +782,8 @@ namespace Spine.Unity.Editor {
 		List<SpineEventTooltip> currentAnimationEventTooltips = new List<SpineEventTooltip>();
 
 		public bool IsValid { get { return skeletonAnimation != null && skeletonAnimation.valid; } }
+
+		public SkeletonAnimation SkeletonAnimation { get { return IsValid ? skeletonAnimation : null; } }
 
 		public Skeleton Skeleton { get { return IsValid ? skeletonAnimation.Skeleton : null; } }
 
@@ -985,6 +987,7 @@ namespace Spine.Unity.Editor {
 			c.orthographicSize = orthoSet;
 
 			float dist = Vector3.Distance(c.transform.position, cameraPositionGoal);
+
 			if (dist > 0f) {
 				Vector3 pos = Vector3.Lerp(c.transform.position, cameraPositionGoal, 0.1f);
 				pos.x = 0;
