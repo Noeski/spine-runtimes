@@ -733,7 +733,7 @@ namespace Spine.Unity.Editor {
 		#endregion
 	}
 
-	internal class SkeletonInspectorPreview {
+	public class SkeletonInspectorPreview {
 		Color OriginColor = new Color(0.3f, 0.3f, 0.3f, 1);
 		static readonly int SliderHash = "Slider".GetHashCode();
 
@@ -774,6 +774,8 @@ namespace Spine.Unity.Editor {
 		List<SpineEventTooltip> currentAnimationEventTooltips = new List<SpineEventTooltip>();
 
 		public bool IsValid { get { return skeletonAnimation != null && skeletonAnimation.valid; } }
+
+		public SkeletonAnimation SkeletonAnimation { get { return IsValid ? skeletonAnimation : null; } }
 
 		public Skeleton Skeleton { get { return IsValid ? skeletonAnimation.Skeleton : null; } }
 
@@ -868,6 +870,9 @@ namespace Spine.Unity.Editor {
 						previewGameObject.GetComponent<Renderer>().enabled = false;
 
 						#if SPINE_UNITY_2018_PREVIEW_API
+                        //NCH: Fix issue with prefab editor
+                        previewGameObject.transform.SetParent(null);
+                        //NCH: End fix
 						previewRenderUtility.AddSingleGO(previewGameObject);
 						#endif
 					}
@@ -971,11 +976,14 @@ namespace Spine.Unity.Editor {
 			lastCameraOrthoGoal = cameraOrthoGoal;
 
 			var c = this.PreviewUtilityCamera;
-			float orthoSet = Mathf.Lerp(c.orthographicSize, cameraOrthoGoal, 0.1f);
-
-			c.orthographicSize = orthoSet;
+			float orthoDist = Mathf.Abs(cameraOrthoGoal - c.orthographicSize);
+			if(orthoDist > 0.001f) {
+				c.orthographicSize = Mathf.Lerp(c.orthographicSize, cameraOrthoGoal, 0.1f);
+				RefreshOnNextUpdate();
+			}
 
 			float dist = Vector3.Distance(c.transform.position, cameraPositionGoal);
+
 			if (dist > 0f) {
 				Vector3 pos = Vector3.Lerp(c.transform.position, cameraPositionGoal, 0.1f);
 				pos.x = 0;
