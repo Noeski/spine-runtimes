@@ -66,10 +66,6 @@ namespace Spine.Unity {
 			"\nWarning: 'Add Normals' required when not using 'Fixed Normals'!\n\nPlease\n"
 			+ "a) enable 'Add Normals' at the SkeletonRenderer/SkeletonAnimation component under 'Advanced' or\n"
 			+ "b) enable 'Fixed Normals' at the Material.\n";
-		public static readonly string kAddNormalsRequiredForURPShadowsMessage =
-			"\nWarning: 'Add Normals' required on URP shader to receive shadows!\n\nPlease\n"
-			+ "a) enable 'Add Normals' at the SkeletonRenderer/SkeletonAnimation component under 'Advanced' or\n"
-			+ "b) disable 'Receive Shadows' at the Material.\n";
 		public static readonly string kSolveTangentsMessage =
 			"\nWarning: 'Solve Tangents' required when using a Normal Map!\n\nPlease\n"
 			+ "a) enable 'Solve Tangents' at the SkeletonRenderer/SkeletonAnimation component under 'Advanced' or\n"
@@ -118,10 +114,6 @@ namespace Spine.Unity {
 				if (renderer.tintBlack == false && RequiresTintBlack(material)) {
 					isProblematic = true;
 					errorMessage += kTintBlackMessage;
-				}
-				if (IsURP3DMaterial(material) && !AreShadowsDisabled(material) && renderer.addNormals == false) {
-					isProblematic = true;
-					errorMessage += kAddNormalsRequiredForURPShadowsMessage;
 				}
 			}
 			return isProblematic;
@@ -259,8 +251,11 @@ namespace Spine.Unity {
 		}
 
 		static bool IsPMAMaterial (Material material) {
-			return (material.HasProperty(STRAIGHT_ALPHA_PARAM_ID) && material.GetInt(STRAIGHT_ALPHA_PARAM_ID) == 0) ||
-					material.IsKeywordEnabled(ALPHAPREMULTIPLY_ON_KEYWORD);
+			bool usesAlphaPremultiplyKeyword = IsSpriteShader(material);
+			if (usesAlphaPremultiplyKeyword)
+				return material.IsKeywordEnabled(ALPHAPREMULTIPLY_ON_KEYWORD);
+			else
+				return material.HasProperty(STRAIGHT_ALPHA_PARAM_ID) && material.GetInt(STRAIGHT_ALPHA_PARAM_ID) == 0;
 		}
 
 		static bool IsURP3DMaterial (Material material) {
@@ -288,12 +283,16 @@ namespace Spine.Unity {
 					break;
 				}
 			}
-			bool isShaderWithMeshNormals =
-				material.shader.name.Contains("Spine/Sprite/Pixel Lit") ||
-				material.shader.name.Contains("Spine/Sprite/Vertex Lit") ||
-				material.shader.name.Contains("2D/Spine/Sprite") || // covers both URP and LWRP
-				material.shader.name.Contains("Pipeline/Spine/Sprite"); // covers both URP and LWRP
+			bool isShaderWithMeshNormals = IsSpriteShader(material);
 			return isShaderWithMeshNormals && !anyFixedNormalSet;
+		}
+
+		static bool IsSpriteShader (Material material) {
+			string shaderName = material.shader.name;
+			return shaderName.Contains("Spine/Sprite/Pixel Lit") ||
+				shaderName.Contains("Spine/Sprite/Vertex Lit") ||
+				shaderName.Contains("2D/Spine/Sprite") || // covers both URP and LWRP
+				shaderName.Contains("Pipeline/Spine/Sprite"); // covers both URP and LWRP
 		}
 
 		static bool RequiresTintBlack (Material material) {

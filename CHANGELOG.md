@@ -110,7 +110,8 @@
 * Removed dependency on `RHI`, `RenderCore`, and `ShaderCore`.
 * Re-importing atlases and their textures now works consistently in all situations.
 * Added mix-and-match example to demonstrate the new Skin API.
-* Materials on `SkeletonRendererComponent` are now blueprint read and writeable. This allows setting dynamic material instances at runtime
+* Materials on `SkeletonRendererComponent` are now blueprint read and writeable. This allows setting dynamic material instances at runtime.
+* Added `InitialSkin` property to `USpineWidget`. This allows previewing different skins in the UMG Designer. Initial skins can still be overridden via blueprint events such as `On Initialized`.
 
 ## C# ##
 * **Breaking changes**
@@ -140,7 +141,7 @@
 ### Unity
 
 * **Breaking changes**
-  * **Officially supported Unity versions are 2017.1-2019.4**.
+  * **Officially supported Unity versions are 2017.1-2020.2**.
   * **Spine `.asmdef` files are again active by default**. They have previously been deactivated to `.txt` extension which is now no longer necessary.
   * **Removed PoseSkeleton() and PoseWithAnimation()** extension methods to prevent issues where animations are not mixed out. Problem was that these methods did not set AnimationState, leaving incorrect state at e.g. attachments enabled at slots when starting subsequent animations. As a replacement you can use `AnimationState.ClearTrack(0);` followed by `var entry = AnimationState.SetAnimation(0, animation, loop); entry.TrackTime = time` to achieve similar behaviour.
   * **The `Shadow alpha cutoff` shader parameter is now respecting slot-color alpha** values at all Spine shaders. A fragment's texture color alpha is multiplied with slot-color alpha before the result is tested against the `Shadow alpha cutoff` threshold.
@@ -162,6 +163,7 @@
       b) to an arbitrary directory outside the Assets directory and then open Package Manager in Unity, select the `+` icon, choose `Add package from disk..` and point it to the package.json file.
       The Project panel should now show an entry `Spine Timeline Extensions` under `Packages`. If the directory is not yet listed, you will need to close and re-open Unity to have it display the directory and its contents.
   * `SkeletonMecanim`'s `Layer Mix Mode` enum name `MixMode.SpineStyle` has been renamed to `MixMode.Hard`. This is most likely not set via code and thus unlikely to be a problem. Serialized scenes and prefabs are unaffected.
+  * `SkeletonRootMotion` and `SkeletonMecanimRootMotion` components now support arbitrary bones in the hierarchy as `Root Motion Bone`. Previously there were problems when selecting a non-root bone as `Root Motion Bone`. `Skeleton.ScaleX` and `.ScaleY` and parent bone scale is now respected as well.
 
 * **Additions**
   * **Spine Preferences stored in Assets/Editor/SpineSettings.asset** Now Spine uses the new `SettingsProvider` API, storing settings in a SpineSettings.asset file which can be shared with team members. Your old preferences are automatically migrated to the new system.
@@ -251,6 +253,11 @@
   * Now all URP (Universal Render Pipeline) and LWRP (Lightweight Render Pipeline) shaders support SRP (Scriptable Render Pipeline) batching. See [Unity SRPBatcher documentation pages](https://docs.unity3d.com/Manual/SRPBatcher.html) for additional information.
   * Sprite shaders now provide four `Diffuse Ramp` modes as an Inspector Material parameter: `Hard`, `Soft`, `Old Hard` and `Old Soft`. In spine-unity 3.8 it defaults to `Old Hard` to keep the behaviour of existing projects unchanged. Note that `Old Hard` and `Old Soft` ramp versions were using only the right half of the ramp texture, and additionally multiplying the light intensity by 2, both leading to brighter lighting than without a ramp texture active. The new ramp modes `Hard` and `Soft` use the full ramp texture and do not modify light intensity, being consistent with lighting without a ramp texture active.
   * Added **native support for slot blend modes** `Additive`, `Multiply` and `Screen` with automatic assignment at newly imported skeleton assets. `BlendModeMaterialAssets` are now obsolete and replaced by the native properties at `SkeletonDataAsset`. The `SkeletonDataAsset` Inspector provides a new `Blend Modes - Upgrade` button to upgrade an obsolete `BlendModeMaterialAsset` to the native blend modes properties. This upgrade will be performed automatically on imported and re-imported assets in Unity 2020.1 and newer to prevent reported `BlendModeMaterialAsset` issues in these Unity versions. spine-unity 4.0 and newer will automatically perform this upgrade regardless of the Unity version.
+  * `BoneFollower` and `BoneFollowerGraphic` components now provide better support for following bones when the skeleton's Transform is not the parent of the follower's Transform. Previously e.g. rotating a common parent Transform did not lead to the desired result, as well as negatively scaling a skeleton's Transform when it is not a parent of the follower's Transform.
+  * URP and LWRP `Sprite` and `SkeletonLit` shaders no longer require `Advanced - Add Normals` enabled to properly cast and receive shadows. It is recommended to disable `Add Normals` if normals are otherwise not needed.
+  * Added an example component `RootMotionDeltaCompensation` located in `Spine Examples/Scripts/Sample Components` which can be used for applying simple delta compensation. You can enable and disable the component to toggle delta compensation of the currently playing animation on and off.
+  * Root motion delta compensation now allows to only adjust X or Y components instead of both. Adds two parameters to `SkeletonRootMotionBase.AdjustRootMotionToDistance()` which default to adjusting both X and Y as before. The `RootMotionDeltaCompensation` example component exposes these parameters as public attributes.
+  * Root motion delta compensation now allows to also add translation root motion to e.g. adjust a horizontal jump upwards or downwards over time. This is necessary because a Y root motion of zero cannot be scaled to become non-zero.
 
 * **Changes of default values**
   * `SkeletonMecanim`'s `Layer Mix Mode` now defaults to `MixMode.MixNext` instead of `MixMode.MixAlways`.
