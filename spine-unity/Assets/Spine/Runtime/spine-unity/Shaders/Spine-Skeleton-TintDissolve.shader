@@ -9,6 +9,7 @@ Shader "Spine/Skeleton Tint Dissolve" {
 		[HideInInspector] _StencilRef("Stencil Reference", Float) = 1.0
 		[HideInInspector][Enum(UnityEngine.Rendering.CompareFunction)] _StencilComp("Stencil Comparison", Float) = 8 // Set to Always as default
 
+		_NoiseScale ("Noise Scale", Float) = 1.0
         _DissolveScale ("Dissolve Scale", Range(0.0, 1.0)) = 0
     	_NoiseTex("Noise Texture", 2D) = "white" {}
     	_EdgeColor1 ("Edge Color 1", Color) = (1.0, 1.0, 1.0, 1.0)
@@ -51,6 +52,7 @@ Shader "Spine/Skeleton Tint Dissolve" {
 			#include "UnityCG.cginc"
 			sampler2D _MainTex;
 			sampler2D _NoiseTex;
+            float _NoiseScale;
             float _DissolveScale;
 			fixed4 _EdgeColor1;
             fixed4 _EdgeColor2;
@@ -67,6 +69,7 @@ Shader "Spine/Skeleton Tint Dissolve" {
 			struct VertexOutput {
 				float4 pos : SV_POSITION;
 				float2 uv : TEXCOORD0;
+                float2 noiseUV : TEXCOORD1;
 				float4 vertexColor : COLOR;
 			};
 
@@ -74,6 +77,7 @@ Shader "Spine/Skeleton Tint Dissolve" {
 				VertexOutput o;
 				o.pos = UnityObjectToClipPos(v.vertex);
 				o.uv = v.uv;
+                o.noiseUV = v.vertex.xy * _NoiseScale;
 				o.vertexColor = v.vertexColor * float4(_Color.rgb * _Color.a, _Color.a); // Combine a PMA version of _Color with vertexColor.
 				return o;
 			}
@@ -81,7 +85,7 @@ Shader "Spine/Skeleton Tint Dissolve" {
 			#include "CGIncludes/Spine-Skeleton-Tint-Common.cginc"
 
 			float4 frag (VertexOutput i) : SV_Target {
-                float mask = tex2D(_NoiseTex, i.uv).r * (1.0 - _GlowScale) + _GlowScale - _DissolveScale;
+                float mask = tex2D(_NoiseTex, i.noiseUV).r * (1.0 - _GlowScale) + _GlowScale - _DissolveScale;
 
                 if(mask <= 0)
 					discard;
