@@ -6,8 +6,6 @@ var __extends = (this && this.__extends) || (function () {
 		return extendStatics(d, b);
 	};
 	return function (d, b) {
-		if (typeof b !== "function" && b !== null)
-			throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
 		extendStatics(d, b);
 		function __() { this.constructor = d; }
 		d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
@@ -1611,7 +1609,7 @@ var spine;
 				slot.attachmentState = this.unkeyedState + AnimationState.SETUP;
 		};
 		AnimationState.prototype.setAttachment = function (skeleton, slot, attachmentName, attachments) {
-			slot.attachment = attachmentName == null ? null : skeleton.getAttachment(slot.data.index, attachmentName);
+			slot.setAttachment(attachmentName == null ? null : skeleton.getAttachment(slot.data.index, attachmentName));
 			if (attachments)
 				slot.attachmentState = this.unkeyedState + AnimationState.CURRENT;
 		};
@@ -4103,17 +4101,11 @@ var spine;
 					var mesh = attachment;
 					verticesLength = mesh.worldVerticesLength;
 					vertices = spine.Utils.setArraySize(temp, verticesLength, 0);
-					if (i == 43) {
-						console.log("WTF");
-					}
 					mesh.computeWorldVertices(slot, 0, verticesLength, vertices, 0, 2);
 				}
 				if (vertices != null) {
 					for (var ii = 0, nn = vertices.length; ii < nn; ii += 2) {
 						var x = vertices[ii], y = vertices[ii + 1];
-						if (isNaN(x) || isNaN(y)) {
-							console.log("WTF");
-						}
 						minX = Math.min(minX, x);
 						minY = Math.min(minY, y);
 						maxX = Math.max(maxX, x);
@@ -11039,7 +11031,7 @@ var spine;
 			function ManagedWebGLRenderingContext(canvasOrContext, contextConfig) {
 				if (contextConfig === void 0) { contextConfig = { alpha: "true" }; }
 				this.restorables = new Array();
-				if (canvasOrContext instanceof HTMLCanvasElement || canvasOrContext instanceof EventTarget) {
+				if (!((canvasOrContext instanceof WebGLRenderingContext) || (canvasOrContext instanceof WebGL2RenderingContext))) {
 					this.setupCanvas(canvasOrContext, contextConfig);
 				}
 				else {
@@ -11666,10 +11658,10 @@ var spine;
 	var SpinePlayer = (function () {
 		function SpinePlayer(parent, config) {
 			this.config = config;
-			this.time = new spine.TimeKeeper();
 			this.paused = true;
 			this.playTime = 0;
 			this.speed = 1;
+			this.time = new spine.TimeKeeper();
 			this.animationViewports = {};
 			this.currentViewport = null;
 			this.previousViewport = null;
@@ -12135,7 +12127,7 @@ var spine;
 					skeletonData = json.readSkeletonData(jsonText);
 				}
 				catch (e) {
-					this.showError("Error: could not load skeleton .json.<br><br>" + escapeHtml(JSON.stringify(e)));
+					this.showError("Error: could not load skeleton .json.<br><br>" + e.toString());
 					return;
 				}
 			}
@@ -12146,7 +12138,7 @@ var spine;
 					skeletonData = binary.readSkeletonData(binaryData);
 				}
 				catch (e) {
-					this.showError("Error: could not load skeleton .skel.<br><br>" + escapeHtml(JSON.stringify(e)));
+					this.showError("Error: could not load skeleton .skel.<br><br>" + e.toString());
 					return;
 				}
 			}
@@ -12377,7 +12369,8 @@ var spine;
 			this.playButton.classList.remove("spine-player-button-icon-pause");
 			this.playButton.classList.add("spine-player-button-icon-play");
 		};
-		SpinePlayer.prototype.setAnimation = function (animation) {
+		SpinePlayer.prototype.setAnimation = function (animation, loop) {
+			if (loop === void 0) { loop = true; }
 			this.previousViewport = this.currentViewport;
 			var animViewport = this.calculateAnimationViewport(animation);
 			var viewport = {
@@ -12430,7 +12423,7 @@ var spine;
 			this.viewportTransitionStart = performance.now();
 			this.animationState.clearTracks();
 			this.skeleton.setToSetupPose();
-			this.animationState.setAnimation(0, animation, true);
+			this.animationState.setAnimation(0, animation, loop);
 		};
 		SpinePlayer.prototype.percentageToWorldUnit = function (size, percentageOrAbsolute) {
 			if (typeof percentageOrAbsolute === "string") {
