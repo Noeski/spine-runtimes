@@ -1,4 +1,4 @@
-Shader "Spine/Skeleton Tint Dissolve" {
+Shader "Spine/Skeleton Tint Dither" {
 	Properties {
 		_Color ("Tint Color", Color) = (1,1,1,1)
 		_Black ("Dark Color", Color) = (0,0,0,0)
@@ -9,12 +9,7 @@ Shader "Spine/Skeleton Tint Dissolve" {
 		[HideInInspector] _StencilRef("Stencil Reference", Float) = 1.0
 		[HideInInspector][Enum(UnityEngine.Rendering.CompareFunction)] _StencilComp("Stencil Comparison", Float) = 8 // Set to Always as default
 
-		_NoiseScale ("Noise Scale", Float) = 1.0
-        _DissolveScale ("Dissolve Scale", Range(0.0, 1.0)) = 0
-    	_NoiseTex ("Noise Texture", 2D) = "white" {}
-    	_EdgeColor1 ("Edge Color 1", Color) = (1.0, 1.0, 1.0, 1.0)
-        _EdgeColor2 ("Edge Color 2", Color) = (1.0, 1.0, 1.0, 1.0)
-        _GlowScale ("Glow Scale", Range (0.0, 1.0)) = 0.1
+		_DitherAlpha ("Dither Alpha", Range (0.0, 1.0)) = 1.0
 
 		// Outline properties are drawn via custom editor.
 		[HideInInspector] _OutlineWidth("Outline Width", Range(0,8)) = 3.0
@@ -51,14 +46,9 @@ Shader "Spine/Skeleton Tint Dissolve" {
 			#pragma fragment frag
 			#include "UnityCG.cginc"
 			sampler2D _MainTex;
-			sampler2D _NoiseTex;
-            float _NoiseScale;
-            float _DissolveScale;
-			fixed4 _EdgeColor1;
-            fixed4 _EdgeColor2;
-            float _GlowScale;
 			float4 _Color;
 			float4 _Black;
+			float _DitherAlpha;
 
 			struct VertexInput {
 				float4 vertex : POSITION;
@@ -69,15 +59,15 @@ Shader "Spine/Skeleton Tint Dissolve" {
 			struct VertexOutput {
 				float4 pos : SV_POSITION;
 				float2 uv : TEXCOORD0;
-                float2 noiseUV : TEXCOORD1;
+				float4 screenPos : TEXCOORD1;
 				float4 vertexColor : COLOR;
 			};
 
 			VertexOutput vert (VertexInput v) {
 				VertexOutput o;
 				o.pos = UnityObjectToClipPos(v.vertex);
+				o.screenPos = ComputeScreenPos(o.pos);
 				o.uv = v.uv;
-                o.noiseUV = v.vertex.xy * _NoiseScale;
 				o.vertexColor = v.vertexColor * float4(_Color.rgb * _Color.a, _Color.a); // Combine a PMA version of _Color with vertexColor.
 				return o;
 			}
@@ -85,18 +75,22 @@ Shader "Spine/Skeleton Tint Dissolve" {
 			#include "CGIncludes/Spine-Skeleton-Tint-Common.cginc"
 
 			float4 frag (VertexOutput i) : SV_Target {
-                float mask = tex2D(_NoiseTex, i.noiseUV).r * (1.0 - _GlowScale) + _GlowScale - _DissolveScale;
+				float2 screenPosition = i.screenPos.xy / i.screenPos.w;
+				screenPosition *= _ScreenParams.xy;
 
-                if(mask <= 0)
-					discard;
+				float DITHER_THRESHOLDS[16] =
+				{
+					1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+					13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+					4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+					16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+				};
+
+				int index = (int(screenPosition.x) % 4) * 4 + int(screenPosition.y) % 4;
+				clip(_DitherAlpha - DITHER_THRESHOLDS[index]);
 
 				float4 texColor = tex2D(_MainTex, i.uv);
-                float4 color = fragTintedColor(texColor, _Black.rgb, i.vertexColor, _Color.a, _Black.a);
-                fixed4 edgeColor = lerp(_EdgeColor1, _EdgeColor2, saturate(mask / _GlowScale));
-
-                color.rgb = lerp(edgeColor, color, step(_GlowScale, mask));
-				color.rgb *= color.a;
-                return color;
+                return fragTintedColor(texColor, _Black.rgb, i.vertexColor, _Color.a, _Black.a);
 			}
 			ENDCG
 		}
