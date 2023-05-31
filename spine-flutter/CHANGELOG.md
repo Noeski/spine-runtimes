@@ -1,3 +1,11 @@
+# 4.1.2
+* API documentation and minor cosmetics.
+
+# 4.1.1
+* Backport to 4.1 spine-runtimes branch.
+* Blend mode support.
+* Hot-reload support. The underlying `SkeletonDrawable` will be retained if the asset file names and type provided to the `SpineWidget` constructor has not changed.
+
 # 4.2.11
 * Update README.md with setup and development instructions.
 

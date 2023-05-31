@@ -984,8 +984,8 @@ spSkeletonData *spSkeletonJson_readSkeletonData(spSkeletonJson *self, const char
 
 	skeleton = Json_getItem(root, "skeleton");
 	if (skeleton) {
-		MALLOC_STR(skeletonData->hash, Json_getString(skeleton, "hash", 0));
-		MALLOC_STR(skeletonData->version, Json_getString(skeleton, "spine", 0));
+		MALLOC_STR(skeletonData->hash, Json_getString(skeleton, "hash", "0"));
+		MALLOC_STR(skeletonData->version, Json_getString(skeleton, "spine", "0"));
 		if (!string_starts_with(skeletonData->version, SPINE_VERSION_STRING)) {
 			char errorMsg[255];
 			sprintf(errorMsg, "Skeleton version %s does not match runtime version %s", skeletonData->version, SPINE_VERSION_STRING);
@@ -1097,7 +1097,7 @@ spSkeletonData *spSkeletonJson_readSkeletonData(spSkeletonJson *self, const char
 									  toColor(dark, 0),
 									  toColor(dark, 1),
 									  toColor(dark, 2),
-									  toColor(dark, 3));
+									  1.0f);
 			}
 
 			item = Json_getItem(slotMap, "attachment");

@@ -350,16 +350,18 @@ cp -f ../spineboy/export/spineboy-pro.skel "$ROOT/spine-ts/spine-phaser/example/
 cp -f ../spineboy/export/spineboy-pma.atlas "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../spineboy/export/spineboy-pma.png "$ROOT/spine-ts/spine-phaser/example/assets/"
 
+cp -f ../spineboy/export/spineboy-pro.skel "$ROOT/spine-ts/spine-phaser/example/typescript/assets/"
+cp -f ../spineboy/export/spineboy-pma.atlas "$ROOT/spine-ts/spine-phaser/example/typescript/assets/"
+cp -f ../spineboy/export/spineboy-pma.png "$ROOT/spine-ts/spine-phaser/example/typescript/assets/"
+
 cp -f ../coin/export/coin-pro.skel "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../coin/export/coin-pma.atlas "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../coin/export/coin-pma.png "$ROOT/spine-ts/spine-phaser/example/assets/"
 
-cp -f ../stretchyman/export/stretchyman-pro.json "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../stretchyman/export/stretchyman-pro.skel "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../stretchyman/export/stretchyman-pma.atlas "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../stretchyman/export/stretchyman-pma.png "$ROOT/spine-ts/spine-phaser/example/assets/"
 
-cp -f ../mix-and-match/export/mix-and-match-pro.json "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../mix-and-match/export/mix-and-match-pro.skel "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../mix-and-match/export/mix-and-match-pma.atlas "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../mix-and-match/export/mix-and-match-pma.png "$ROOT/spine-ts/spine-phaser/example/assets/"

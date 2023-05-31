@@ -113,7 +113,7 @@ export class SkeletonRenderer {
 				region.computeWorldVertices(slot, renderable.vertices, 0, clippedVertexSize);
 				triangles = SkeletonRenderer.QUAD_TRIANGLES;
 				uvs = region.uvs;
-				texture = <GLTexture>(<TextureAtlasRegion>region.region!.renderObject).page.texture;
+				texture = <GLTexture>region.region!.texture;
 				attachmentColor = region.color;
 			} else if (attachment instanceof MeshAttachment) {
 				let mesh = <MeshAttachment>attachment;
@@ -125,7 +125,7 @@ export class SkeletonRenderer {
 				}
 				mesh.computeWorldVertices(slot, 0, mesh.worldVerticesLength, renderable.vertices, 0, clippedVertexSize);
 				triangles = mesh.triangles;
-				texture = <GLTexture>(<TextureAtlasRegion>mesh.region!.renderObject).page.texture;
+				texture = <GLTexture>mesh.region!.texture;
 				uvs = mesh.uvs;
 				attachmentColor = mesh.color;
 			} else if (attachment instanceof ClippingAttachment) {
@@ -176,7 +176,7 @@ export class SkeletonRenderer {
 					clipper.clipTriangles(renderable.vertices, renderable.numFloats, triangles, triangles.length, uvs, finalColor, darkColor, twoColorTint);
 					let clippedVertices = new Float32Array(clipper.clippedVertices);
 					let clippedTriangles = clipper.clippedTriangles;
-					if (transformer) transformer(renderable.vertices, renderable.numFloats, vertexSize);
+					if (transformer) transformer(clippedVertices, clippedVertices.length, vertexSize);
 					batcher.draw(texture, clippedVertices, clippedTriangles);
 				} else {
 					let verts = renderable.vertices;

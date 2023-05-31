@@ -1,8 +1,7 @@
 import { SPINE_GAME_OBJECT_TYPE } from "./keys";
 import { SpinePlugin } from "./SpinePlugin";
-import { ComputedSizeMixin, DepthMixin, FlipMixin, ScrollFactorMixin, TransformMixin, VisibleMixin } from "./mixins";
+import { ComputedSizeMixin, DepthMixin, FlipMixin, ScrollFactorMixin, TransformMixin, VisibleMixin, AlphaMixin } from "./mixins";
 import { AnimationState, AnimationStateData, Bone, MathUtils, Skeleton, Skin, Vector2 } from "@esotericsoftware/spine-core";
-import { Vector3 } from "@esotericsoftware/spine-webgl";
 
 class BaseSpineGameObject extends Phaser.GameObjects.GameObject {
 	constructor (scene: Phaser.Scene, type: string) {
@@ -10,10 +9,13 @@ class BaseSpineGameObject extends Phaser.GameObjects.GameObject {
 	}
 }
 
+/** A bounds provider calculates the bounding box for a skeleton, which is then assigned as the size of the SpineGameObject. */
 export interface SpineGameObjectBoundsProvider {
+	// Returns the bounding box for the skeleton, in skeleton space.
 	calculateBounds (gameObject: SpineGameObject): { x: number, y: number, width: number, height: number };
 }
 
+/** A bounds provider that calculates the bounding box from the setup pose. */
 export class SetupPoseBoundsProvider implements SpineGameObjectBoundsProvider {
 	calculateBounds (gameObject: SpineGameObject) {
 		if (!gameObject.skeleton) return { x: 0, y: 0, width: 0, height: 0 };
@@ -27,9 +29,14 @@ export class SetupPoseBoundsProvider implements SpineGameObjectBoundsProvider {
 	}
 }
 
+/** A bounds provider that calculates the bounding box by taking the maximumg bounding box for a combination of skins and specific animation. */
 export class SkinsAndAnimationBoundsProvider implements SpineGameObjectBoundsProvider {
+	/**
+	 * @param animation The animation to use for calculating the bounds. If null, the setup pose is used.
+	 * @param skins The skins to use for calculating the bounds. If empty, the default skin is used.
+	 * @param timeStep The time step to use for calculating the bounds. A smaller time step means more precision, but slower calculation.
+	 */
 	constructor (private animation: string, private skins: string[] = [], private timeStep: number = 0.05) {
-
 	}
 
 	calculateBounds (gameObject: SpineGameObject): { x: number; y: number; width: number; height: number; } {
@@ -76,11 +83,34 @@ export class SkinsAndAnimationBoundsProvider implements SpineGameObjectBoundsPro
 	}
 }
 
-export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(ScrollFactorMixin(TransformMixin(VisibleMixin(BaseSpineGameObject)))))) {
+/**
+ * A SpineGameObject is a Phaser {@link GameObject} that can be added to a Phaser Scene and render a Spine skeleton.
+ * 
+ * The Spine GameObject is a thin wrapper around a Spine {@link Skeleton}, {@link AnimationState} and {@link AnimationStateData}. It is responsible for:
+ * - updating the animation state
+ * - applying the animation state to the skeleton's bones, slots, attachments, and draw order.
+ * - updating the skeleton's bone world transforms
+ * - rendering the skeleton
+ * 
+ * See the {@link SpinePlugin} class for more information on how to create a `SpineGameObject`.
+ * 
+ * The skeleton, animation state, and animation state data can be accessed via the repsective fields. They can be manually updated via {@link updatePose}.
+ * 
+ * To modify the bone hierarchy before the world transforms are computed, a callback can be set via the {@link beforeUpdateWorldTransforms} field.
+ * 
+ * To modify the bone hierarchy after the world transforms are computed, a callback can be set via the {@link afterUpdateWorldTransforms} field.
+ * 
+ * The class also features methods to convert between the skeleton coordinate system and the Phaser coordinate system. 
+ * 
+ * See {@link skeletonToPhaserWorldCoordinates}, {@link phaserWorldCoordinatesToSkeleton}, and {@link phaserWorldCoordinatesToBoneLocal.}
+ */
+export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(ScrollFactorMixin(TransformMixin(VisibleMixin(AlphaMixin(BaseSpineGameObject))))))) {
 	blendMode = -1;
-	skeleton: Skeleton | null = null;
-	animationStateData: AnimationStateData | null = null;
-	animationState: AnimationState | null = null;
+	skeleton: Skeleton;
+	animationStateData: AnimationStateData;
+	animationState: AnimationState;
+	beforeUpdateWorldTransforms: (object: SpineGameObject) => void = () => { };
+	afterUpdateWorldTransforms: (object: SpineGameObject) => void = () => { };
 	private premultipliedAlpha = false;
 	private _displayOriginX = 0;
 	private _displayOriginY = 0;
@@ -89,22 +119,14 @@ export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(Scro
 
 	constructor (scene: Phaser.Scene, private plugin: SpinePlugin, x: number, y: number, dataKey: string, atlasKey: string, public boundsProvider: SpineGameObjectBoundsProvider = new SetupPoseBoundsProvider()) {
 		super(scene, SPINE_GAME_OBJECT_TYPE);
-		this.setPosition(x, y); x
-		this.setSkeleton(dataKey, atlasKey);
-	}
+		this.setPosition(x, y);
 
-	setSkeleton (dataKey: string, atlasKey: string) {
-		if (dataKey && atlasKey) {
-			this.premultipliedAlpha = this.plugin.isAtlasPremultiplied(atlasKey);
-			this.skeleton = this.plugin.createSkeleton(dataKey, atlasKey);
-			this.animationStateData = new AnimationStateData(this.skeleton.data);
-			this.animationState = new AnimationState(this.animationStateData);
-			this.updateSize();
-		} else {
-			this.skeleton = null;
-			this.animationStateData = null;
-			this.animationState = null;
-		}
+		this.premultipliedAlpha = this.plugin.isAtlasPremultiplied(atlasKey);
+		this.skeleton = this.plugin.createSkeleton(dataKey, atlasKey);
+		this.animationStateData = new AnimationStateData(this.skeleton.data);
+		this.animationState = new AnimationState(this.animationStateData);
+		this.skeleton.updateWorldTransform();
+		this.updateSize();
 	}
 
 	public get displayOriginX () {
@@ -152,6 +174,7 @@ export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(Scro
 		this.displayOriginY = -bounds.y;
 	}
 
+	/** Converts a point from the skeleton coordinate system to the Phaser world coordinate system. */
 	skeletonToPhaserWorldCoordinates (point: { x: number, y: number }) {
 		let transform = this.getWorldTransformMatrix();
 		let a = transform.a, b = transform.b, c = transform.c, d = transform.d, tx = transform.tx, ty = transform.ty;
@@ -161,6 +184,7 @@ export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(Scro
 		point.y = x * b + y * d + ty;
 	}
 
+	/** Converts a point from the Phaser world coordinate system to the skeleton coordinate system. */
 	phaserWorldCoordinatesToSkeleton (point: { x: number, y: number }) {
 		let transform = this.getWorldTransformMatrix();
 		transform = transform.invert();
@@ -171,6 +195,7 @@ export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(Scro
 		point.y = x * b + y * d + ty;
 	}
 
+	/** Converts a point from the Phaser world coordinate system to the bone's local coordinate system. */
 	phaserWorldCoordinatesToBone (point: { x: number, y: number }, bone: Bone) {
 		this.phaserWorldCoordinatesToSkeleton(point);
 		if (bone.parent) {
@@ -180,17 +205,24 @@ export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(Scro
 		}
 	}
 
-	preUpdate (time: number, delta: number) {
-		if (!this.skeleton || !this.animationState) return;
-
+	/**
+	 * Updates the {@link AnimationState}, applies it to the {@link Skeleton}, then updates the world transforms of all bones.
+	 * @param delta The time delta in milliseconds
+	 */
+	updatePose (delta: number) {
 		this.animationState.update(delta / 1000);
 		this.animationState.apply(this.skeleton);
+		this.beforeUpdateWorldTransforms(this);
 		this.skeleton.updateWorldTransform();
+		this.afterUpdateWorldTransforms(this);
+	}
+
+	preUpdate (time: number, delta: number) {
+		if (!this.skeleton || !this.animationState) return;
+		this.updatePose(delta);
 	}
 
 	preDestroy () {
-		this.skeleton = null;
-		this.animationState = null;
 		// FIXME tear down any event emitters
 	}
 
