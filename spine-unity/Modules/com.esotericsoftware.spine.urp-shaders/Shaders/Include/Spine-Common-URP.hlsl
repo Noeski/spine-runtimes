@@ -3,21 +3,37 @@
 
 #ifdef USE_FORWARD_PLUS
 #define IS_URP_14_OR_NEWER 1
+#define IS_URP_12_OR_NEWER 1
 #else
 #define IS_URP_14_OR_NEWER 0
+    #ifdef UNIVERSAL_REALTIME_LIGHTS_INCLUDED
+    #define IS_URP_12_OR_NEWER 1
+    #else
+    #define IS_URP_12_OR_NEWER 0
+    #endif
 #endif
 
 #if defined(_WRITE_RENDERING_LAYERS) && IS_URP_14_OR_NEWER
 #define USE_WRITE_RENDERING_LAYERS
 #endif
 
-#ifdef _LIGHT_LAYERS
+#if defined(_LIGHT_LAYERS) && IS_URP_12_OR_NEWER
+#define USE_LIGHT_LAYERS
+#endif
+
+#if defined(_LIGHT_COOKIES) && IS_URP_12_OR_NEWER
+#define USE_LIGHT_COOKIES
+#endif
+
+#ifdef USE_LIGHT_LAYERS
 uint GetMeshRenderingLayerBackwardsCompatible()
 {
     #if IS_URP_14_OR_NEWER
     return GetMeshRenderingLayer();
-    #else
+    #elif IS_URP_12_OR_NEWER
     return GetMeshRenderingLightLayer();
+    #else
+    return 0;
     #endif
 }
 #else
@@ -26,6 +42,19 @@ uint GetMeshRenderingLayerBackwardsCompatible()
     return 0;
 }
 #endif
+
+// copy of an older version of InputData before additional members were added in more recent URP versions. 
+struct InputDataBackwardsCompatible {
+    float3  positionWS;
+    half3   normalWS;
+    half3   viewDirectionWS;
+    float4  shadowCoord;
+    //half    fogCoord;
+    half3   vertexLighting;
+    half3   bakedGI;
+    float2  normalizedScreenSpaceUV;
+    half4   shadowMask;
+};
 
 #if USE_FORWARD_PLUS
 // note: LIGHT_LOOP_BEGIN accesses inputData.normalizedScreenSpaceUV and inputData.positionWS.

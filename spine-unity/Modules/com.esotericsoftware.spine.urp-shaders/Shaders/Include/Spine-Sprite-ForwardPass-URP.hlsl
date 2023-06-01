@@ -56,7 +56,7 @@ struct VertexOutputLWRP
 //                  Vertex and Fragment functions                            //
 ///////////////////////////////////////////////////////////////////////////////
 #if defined(_ADDITIONAL_LIGHT_SHADOWS) && !defined(_RECEIVE_SHADOWS_OFF)
-half4 CalculateShadowMaskBackwardsCompatible(InputData inputData)
+half4 CalculateShadowMaskBackwardsCompatible(InputDataBackwardsCompatible inputData)
 {
 	// To ensure backward compatibility we have to avoid using shadowMask input, as it is not present in older shaders
 #if defined(SHADOWS_SHADOWMASK) && defined(LIGHTMAP_ON)
@@ -102,21 +102,21 @@ half3 LightingLambertRamped(half3 lightColor, float attenuation, half3 lightDir,
 
 #if defined(SPECULAR)
 
-half3 ProcessLightPBRSimplified(InputData inputData, BRDFData brdfData, half4 shadowMask, uint meshRenderingLayers, int lightIndex)
+half3 ProcessLightPBRSimplified(InputDataBackwardsCompatible inputData, BRDFData brdfData, half4 shadowMask, uint meshRenderingLayers, int lightIndex)
 {
 #if defined(_ADDITIONAL_LIGHT_SHADOWS) && !defined(_RECEIVE_SHADOWS_OFF)
 	Light light = GetAdditionalLight(lightIndex, inputData.positionWS, shadowMask);
 #else
 	Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
 #endif
-#ifdef _LIGHT_LAYERS
+#ifdef USE_LIGHT_LAYERS
 	if (!IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
 		return half3(0, 0, 0);
 #endif
 	return LightingPhysicallyBased(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
 }
 
-half4 LightweightFragmentPBRSimplified(InputData inputData, half4 texAlbedoAlpha, half metallic, half3 specular,
+half4 LightweightFragmentPBRSimplified(InputDataBackwardsCompatible inputData, half4 texAlbedoAlpha, half metallic, half3 specular,
 	half smoothness, half3 emission, half4 vertexColor)
 {
 #if !defined(_TINT_BLACK_ON)
@@ -136,7 +136,7 @@ half4 LightweightFragmentPBRSimplified(InputData inputData, half4 texAlbedoAlpha
 #else
 	Light mainLight = GetMainLight();
 #endif
-#if defined(_LIGHT_COOKIES)
+#if defined(USE_LIGHT_COOKIES)
 	half3 cookieColor = SampleMainLightCookie(inputData.positionWS);
 	mainLight.color *= cookieColor;
 #endif
@@ -179,7 +179,7 @@ half4 LightweightFragmentPBRSimplified(InputData inputData, half4 texAlbedoAlpha
 
 #else // !SPECULAR
 
-half3 ProcessLightLambert(InputData inputData, half4 shadowMask, uint meshRenderingLayers, int lightIndex)
+half3 ProcessLightLambert(InputDataBackwardsCompatible inputData, half4 shadowMask, uint meshRenderingLayers, int lightIndex)
 {
 #if defined(_ADDITIONAL_LIGHT_SHADOWS) && !defined(_RECEIVE_SHADOWS_OFF)
 	Light light = GetAdditionalLight(lightIndex, inputData.positionWS, shadowMask);
@@ -187,7 +187,7 @@ half3 ProcessLightLambert(InputData inputData, half4 shadowMask, uint meshRender
 	Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
 #endif
 
-#ifdef _LIGHT_LAYERS
+#ifdef USE_LIGHT_LAYERS
 	if (!IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
 		return half3(0, 0, 0);
 #endif
@@ -201,7 +201,7 @@ half3 ProcessLightLambert(InputData inputData, half4 shadowMask, uint meshRender
 #endif
 }
 
-half4 LightweightFragmentBlinnPhongSimplified(InputData inputData, half4 texDiffuseAlpha, half3 emission, half4 vertexColor)
+half4 LightweightFragmentBlinnPhongSimplified(InputDataBackwardsCompatible inputData, half4 texDiffuseAlpha, half3 emission, half4 vertexColor)
 {
 #if !defined(_TINT_BLACK_ON)
 	half4 diffuse = texDiffuseAlpha * vertexColor;
@@ -215,7 +215,7 @@ half4 LightweightFragmentBlinnPhongSimplified(InputData inputData, half4 texDiff
 #else
 	Light mainLight = GetMainLight();
 #endif
-#if defined(_LIGHT_COOKIES)
+#if defined(USE_LIGHT_COOKIES)
 	half3 cookieColor = SampleMainLightCookie(inputData.positionWS);
 	mainLight.color *= cookieColor;
 #endif
@@ -334,7 +334,7 @@ half4 ForwardPassFragmentSprite(VertexOutputLWRP input
 #endif
 
 	// fill out InputData struct
-	InputData inputData;
+	InputDataBackwardsCompatible inputData;
 #if !defined(_RECEIVE_SHADOWS_OFF)
 	#if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
 		inputData.shadowCoord = input.shadowCoord;
