@@ -1,6 +1,35 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated September 24, 2021. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2021, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import { SPINE_GAME_OBJECT_TYPE } from "./keys";
 import { SpinePlugin } from "./SpinePlugin";
-import { ComputedSizeMixin, DepthMixin, FlipMixin, ScrollFactorMixin, TransformMixin, VisibleMixin, AlphaMixin } from "./mixins";
+import { ComputedSizeMixin, DepthMixin, FlipMixin, ScrollFactorMixin, TransformMixin, VisibleMixin, AlphaMixin, OriginMixin } from "./mixins";
 import { AnimationState, AnimationStateData, Bone, MathUtils, Skeleton, Skin, Vector2 } from "@esotericsoftware/spine-core";
 
 class BaseSpineGameObject extends Phaser.GameObjects.GameObject {
@@ -25,7 +54,8 @@ export class SetupPoseBoundsProvider implements SpineGameObjectBoundsProvider {
 		const skeleton = new Skeleton(gameObject.skeleton.data);
 		skeleton.setToSetupPose();
 		skeleton.updateWorldTransform();
-		return skeleton.getBoundsRect();
+		const bounds = skeleton.getBoundsRect();
+		return bounds.width == Number.NEGATIVE_INFINITY ? { x: 0, y: 0, width: 0, height: 0 } : bounds;
 	}
 }
 
@@ -36,7 +66,7 @@ export class SkinsAndAnimationBoundsProvider implements SpineGameObjectBoundsPro
 	 * @param skins The skins to use for calculating the bounds. If empty, the default skin is used.
 	 * @param timeStep The time step to use for calculating the bounds. A smaller time step means more precision, but slower calculation.
 	 */
-	constructor (private animation: string, private skins: string[] = [], private timeStep: number = 0.05) {
+	constructor (private animation: string | null, private skins: string[] = [], private timeStep: number = 0.05) {
 	}
 
 	calculateBounds (gameObject: SpineGameObject): { x: number; y: number; width: number; height: number; } {
@@ -61,7 +91,8 @@ export class SkinsAndAnimationBoundsProvider implements SpineGameObjectBoundsPro
 		const animation = this.animation != null ? data.findAnimation(this.animation!) : null;
 		if (animation == null) {
 			skeleton.updateWorldTransform();
-			return skeleton.getBoundsRect();
+			const bounds = skeleton.getBoundsRect();
+			return bounds.width == Number.NEGATIVE_INFINITY ? { x: 0, y: 0, width: 0, height: 0 } : bounds;
 		} else {
 			let minX = Number.POSITIVE_INFINITY, minY = Number.POSITIVE_INFINITY, maxX = Number.NEGATIVE_INFINITY, maxY = Number.NEGATIVE_INFINITY;
 			animationState.clearTracks();
@@ -78,33 +109,34 @@ export class SkinsAndAnimationBoundsProvider implements SpineGameObjectBoundsPro
 				maxX = Math.max(maxX, minX + bounds.width);
 				maxY = Math.max(maxY, minY + bounds.height);
 			}
-			return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+			const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+			return bounds.width == Number.NEGATIVE_INFINITY ? { x: 0, y: 0, width: 0, height: 0 } : bounds;
 		}
 	}
 }
 
 /**
  * A SpineGameObject is a Phaser {@link GameObject} that can be added to a Phaser Scene and render a Spine skeleton.
- * 
+ *
  * The Spine GameObject is a thin wrapper around a Spine {@link Skeleton}, {@link AnimationState} and {@link AnimationStateData}. It is responsible for:
  * - updating the animation state
  * - applying the animation state to the skeleton's bones, slots, attachments, and draw order.
  * - updating the skeleton's bone world transforms
  * - rendering the skeleton
- * 
+ *
  * See the {@link SpinePlugin} class for more information on how to create a `SpineGameObject`.
- * 
+ *
  * The skeleton, animation state, and animation state data can be accessed via the repsective fields. They can be manually updated via {@link updatePose}.
- * 
+ *
  * To modify the bone hierarchy before the world transforms are computed, a callback can be set via the {@link beforeUpdateWorldTransforms} field.
- * 
+ *
  * To modify the bone hierarchy after the world transforms are computed, a callback can be set via the {@link afterUpdateWorldTransforms} field.
- * 
- * The class also features methods to convert between the skeleton coordinate system and the Phaser coordinate system. 
- * 
+ *
+ * The class also features methods to convert between the skeleton coordinate system and the Phaser coordinate system.
+ *
  * See {@link skeletonToPhaserWorldCoordinates}, {@link phaserWorldCoordinatesToSkeleton}, and {@link phaserWorldCoordinatesToBoneLocal.}
  */
-export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(ScrollFactorMixin(TransformMixin(VisibleMixin(AlphaMixin(BaseSpineGameObject))))))) {
+export class SpineGameObject extends DepthMixin(OriginMixin(ComputedSizeMixin(FlipMixin(ScrollFactorMixin(TransformMixin(VisibleMixin(AlphaMixin(BaseSpineGameObject)))))))) {
 	blendMode = -1;
 	skeleton: Skeleton;
 	animationStateData: AnimationStateData;
@@ -112,10 +144,6 @@ export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(Scro
 	beforeUpdateWorldTransforms: (object: SpineGameObject) => void = () => { };
 	afterUpdateWorldTransforms: (object: SpineGameObject) => void = () => { };
 	private premultipliedAlpha = false;
-	private _displayOriginX = 0;
-	private _displayOriginY = 0;
-	private _scaleX = 1;
-	private _scaleY = 1;
 
 	constructor (scene: Phaser.Scene, private plugin: SpinePlugin, x: number, y: number, dataKey: string, atlasKey: string, public boundsProvider: SpineGameObjectBoundsProvider = new SetupPoseBoundsProvider()) {
 		super(scene, SPINE_GAME_OBJECT_TYPE);
@@ -129,44 +157,11 @@ export class SpineGameObject extends ComputedSizeMixin(DepthMixin(FlipMixin(Scro
 		this.updateSize();
 	}
 
-	public get displayOriginX () {
-		return this._displayOriginX;
-	}
-
-	public set displayOriginX (value: number) {
-		this._displayOriginX = value;
-	}
-
-	public get displayOriginY () {
-		return this._displayOriginY;
-	}
-
-	public set displayOriginY (value: number) {
-		this._displayOriginY = value;
-	}
-
-	public get scaleX () {
-		return this._scaleX;
-	}
-
-	public set scaleX (value: number) {
-		this._scaleX = value;
-		this.updateSize();
-	}
-
-	public get scaleY () {
-		return this._scaleY;
-	}
-
-	public set scaleY (value: number) {
-		this._scaleY = value;
-		this.updateSize();
-	}
-
 	updateSize () {
 		if (!this.skeleton) return;
 		let bounds = this.boundsProvider.calculateBounds(this);
-		// For some reason the TS compiler and the ComputedSize mixin don't work well together...
+		// For some reason the TS compiler and the ComputedSize mixin don't work well together and we have
+		// to cast to any.
 		let self = this as any;
 		self.width = bounds.width;
 		self.height = bounds.height;

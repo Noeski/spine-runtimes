@@ -87,7 +87,7 @@ half3 LightweightLightFragmentSimplified(float3 positionWS, float2 positionCS, h
 	half3 additionalLightColor = half3(0, 0, 0);
 	shadowedColor = half3(0, 0, 0);
 
-	InputDataBackwardsCompatible inputData; // LIGHT_LOOP_BEGIN macro requires InputData struct in USE_FORWARD_PLUS branch
+	InputData inputData; // LIGHT_LOOP_BEGIN macro requires InputData struct in USE_FORWARD_PLUS branch
 	inputData.positionWS = positionWS;
 	inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(positionCS);
 
@@ -150,7 +150,11 @@ VertexOutput vert(appdata v) {
 
 	// Note: ambient light is also handled via SH.
 	half3 vertexSH;
+#if IS_URP_15_OR_NEWER
+	OUTPUT_SH(positionWS, normalWS.xyz, GetWorldSpaceNormalizeViewDir(positionWS), vertexSH);
+#else
 	OUTPUT_SH(normalWS.xyz, vertexSH);
+#endif
 	color.rgb += SAMPLE_GI(v.lightmapUV, vertexSH, normalWS);
 	o.color = color;
 

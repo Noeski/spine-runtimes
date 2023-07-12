@@ -341,6 +341,11 @@ cp -f ../spineboy/export/spineboy-pro.skel "$ROOT/spine-ts/spine-player/example/
 cp -f ../spineboy/export/spineboy-pma.atlas "$ROOT/spine-ts/spine-player/example/assets/"
 cp -f ../spineboy/export/spineboy-pma.png "$ROOT/spine-ts/spine-player/example/assets/"
 
+cp -f ../spineboy/export/spineboy-pro.json "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../spineboy/export/spineboy-pro.skel "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../spineboy/export/spineboy.atlas "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../spineboy/export/spineboy.png "$ROOT/spine-ts/spine-pixi/example/assets/"
+
 rm "$ROOT/spine-ts/spine-phaser/example/assets/"*
 cp -f ../raptor/export/raptor-pro.json "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../raptor/export/raptor-pma.atlas "$ROOT/spine-ts/spine-phaser/example/assets/"
@@ -365,6 +370,27 @@ cp -f ../stretchyman/export/stretchyman-pma.png "$ROOT/spine-ts/spine-phaser/exa
 cp -f ../mix-and-match/export/mix-and-match-pro.skel "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../mix-and-match/export/mix-and-match-pma.atlas "$ROOT/spine-ts/spine-phaser/example/assets/"
 cp -f ../mix-and-match/export/mix-and-match-pma.png "$ROOT/spine-ts/spine-phaser/example/assets/"
+
+rm "$ROOT/spine-ts/spine-pixi/example/assets/"*
+cp -f ../raptor/export/raptor-pro.json "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../raptor/export/raptor-pma.atlas "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../raptor/export/raptor-pma.png "$ROOT/spine-ts/spine-pixi/example/assets/"
+
+cp -f ../spineboy/export/spineboy-pro.skel "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../spineboy/export/spineboy-pma.atlas "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../spineboy/export/spineboy-pma.png "$ROOT/spine-ts/spine-pixi/example/assets/"
+
+cp -f ../coin/export/coin-pro.skel "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../coin/export/coin-pma.atlas "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../coin/export/coin-pma.png "$ROOT/spine-ts/spine-pixi/example/assets/"
+
+cp -f ../stretchyman/export/stretchyman-pro.skel "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../stretchyman/export/stretchyman-pma.atlas "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../stretchyman/export/stretchyman-pma.png "$ROOT/spine-ts/spine-pixi/example/assets/"
+
+cp -f ../mix-and-match/export/mix-and-match-pro.skel "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../mix-and-match/export/mix-and-match-pma.atlas "$ROOT/spine-ts/spine-pixi/example/assets/"
+cp -f ../mix-and-match/export/mix-and-match-pma.png "$ROOT/spine-ts/spine-pixi/example/assets/"
 
 echo "spine-monogame"
 rm "$ROOT/spine-monogame/spine-monogame-example/data/"*

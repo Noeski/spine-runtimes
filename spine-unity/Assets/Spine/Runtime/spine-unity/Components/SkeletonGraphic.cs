@@ -67,6 +67,8 @@ namespace Spine.Unity {
 		public bool startingLoop;
 		public float timeScale = 1f;
 		public bool freeze;
+		protected float meshScale = 1f;
+		public float MeshScale { get { return meshScale; } }
 
 		public enum LayoutMode {
 			None = 0,
@@ -114,6 +116,7 @@ namespace Spine.Unity {
 		[SerializeField] protected List<Transform> separatorParts = new List<Transform>();
 		public List<Transform> SeparatorParts { get { return separatorParts; } }
 		public bool updateSeparatorPartLocation = true;
+		public bool updateSeparatorPartScale = false;
 
 		private bool wasUpdatedAfterInit = true;
 		private bool requiresInstructionUpate = true;
@@ -387,6 +390,10 @@ namespace Spine.Unity {
 			else
 				state.ApplyEventTimelinesOnly(skeleton, issueEvents: true);
 
+			AfterAnimationApplied();
+		}
+
+		public void AfterAnimationApplied () {
 			if (UpdateLocal != null)
 				UpdateLocal(this);
 
@@ -776,13 +783,13 @@ namespace Spine.Unity {
 				meshGenerator.BuildMeshWithArrays(currentInstructions, updateTriangles);
 			}
 
-			float scale = (canvas == null) ? 100 : canvas.referencePixelsPerUnit;
+			meshScale = (canvas == null) ? 100 : canvas.referencePixelsPerUnit;
 			if (layoutScaleMode != LayoutMode.None) {
-				scale *= referenceScale;
+				meshScale *= referenceScale;
 				if (!EditReferenceRect)
-					scale *= GetLayoutScale(layoutScaleMode);
+					meshScale *= GetLayoutScale(layoutScaleMode);
 			}
-			meshGenerator.ScaleVertexData(scale);
+			meshGenerator.ScaleVertexData(meshScale);
 			if (OnPostProcessVertices != null) OnPostProcessVertices.Invoke(this.meshGenerator.Buffers);
 
 			Mesh mesh = smartMesh.mesh;
@@ -854,11 +861,11 @@ namespace Spine.Unity {
 		}
 
 		protected void UpdateMeshMultipleCanvasRenderers (SkeletonRendererInstruction currentInstructions) {
-			float scale = (canvas == null) ? 100 : canvas.referencePixelsPerUnit;
+			meshScale = (canvas == null) ? 100 : canvas.referencePixelsPerUnit;
 			if (layoutScaleMode != LayoutMode.None) {
-				scale *= referenceScale;
+				meshScale *= referenceScale;
 				if (!EditReferenceRect)
-					scale *= GetLayoutScale(layoutScaleMode);
+					meshScale *= GetLayoutScale(layoutScaleMode);
 			}
 			// Generate meshes.
 			int submeshCount = currentInstructions.submeshInstructions.Count;
@@ -880,7 +887,7 @@ namespace Spine.Unity {
 				meshGenerator.AddSubmesh(submeshInstructionItem);
 
 				Mesh targetMesh = meshesItems[i];
-				meshGenerator.ScaleVertexData(scale);
+				meshGenerator.ScaleVertexData(meshScale);
 				if (OnPostProcessVertices != null) OnPostProcessVertices.Invoke(this.meshGenerator.Buffers);
 				meshGenerator.FillVertexData(targetMesh);
 				meshGenerator.FillTriangles(targetMesh);
@@ -944,6 +951,17 @@ namespace Spine.Unity {
 				for (int p = 0; p < this.separatorParts.Count; ++p) {
 					separatorParts[p].position = this.transform.position;
 					separatorParts[p].rotation = this.transform.rotation;
+				}
+			}
+			if (updateSeparatorPartScale) {
+				Vector3 targetScale = this.transform.lossyScale;
+				for (int p = 0; p < this.separatorParts.Count; ++p) {
+					Transform partParent = separatorParts[p].transform.parent;
+					Vector3 parentScale = partParent == null ? Vector3.one : partParent.lossyScale;
+					separatorParts[p].localScale = new Vector3(
+						parentScale.x == 0f ? 1f : targetScale.x / parentScale.x,
+						parentScale.y == 0f ? 1f : targetScale.y / parentScale.y,
+						parentScale.z == 0f ? 1f : targetScale.z / parentScale.z);
 				}
 			}
 
