@@ -756,6 +756,7 @@ namespace Spine.Unity.Editor {
 		static float CurrentTime { get { return (float)EditorApplication.timeSinceStartup; } }
 
 		Action Repaint;
+		public event Action OnDrawHandles;
 		public event Action<string> OnSkinChanged;
 
 		Texture previewTexture;
@@ -965,6 +966,8 @@ namespace Spine.Unity.Editor {
 					SpineHandles.DrawBoundingBoxes(skeletonAnimation.transform, skeletonAnimation.skeleton);
 					if (SkeletonDataAssetInspector.showAttachments)
 						SpineHandles.DrawPaths(skeletonAnimation.transform, skeletonAnimation.skeleton);
+
+					if (OnDrawHandles != null) OnDrawHandles();
 				}
 
 				renderer.enabled = false;
