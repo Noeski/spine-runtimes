@@ -579,6 +579,9 @@ namespace Spine.Unity.Editor {
 							SkeletonBaker.UpdateMecanimClips(skeletonDataAsset);
 #endif
 
+						if (currentHash == null || lastHash != currentHash)
+							UpdateAnimationReferenceAssets(skeletonDataAsset);
+
 						// if (currentHash == null || lastHash != currentHash)
 						// Do any upkeep on synchronized assets
 
@@ -589,6 +592,49 @@ namespace Spine.Unity.Editor {
 					SpineEditorUtilities.DataReloadHandler.ReloadAnimationReferenceAssets(skeletonDataAsset);
 				}
 			}
+		}
+
+		public static void UpdateAnimationReferenceAssets (SkeletonDataAsset skeletonDataAsset) {
+			SkeletonData skeletonData = skeletonDataAsset.GetSkeletonData(true);
+			if (skeletonData == null) {
+				return;
+			}
+
+			HashSet<Object> existingAnimations = new HashSet<Object>();
+			Object[] animationReferenceAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(AssetDatabase.GetAssetPath(skeletonDataAsset));
+
+			FieldInfo nameField = typeof(AnimationReferenceAsset).GetField("animationName", BindingFlags.NonPublic | BindingFlags.Instance);
+			FieldInfo skeletonDataAssetField = typeof(AnimationReferenceAsset).GetField("skeletonDataAsset", BindingFlags.NonPublic | BindingFlags.Instance);
+			foreach (Animation animation in skeletonData.Animations) {
+				string assetName = AssetUtility.GetPathSafeName(animation.Name);
+				bool found = false;
+
+				foreach (Object animationReferenceAsset in animationReferenceAssets) {
+					if (animationReferenceAsset.name == assetName) {
+						found = true;
+						existingAnimations.Add(animationReferenceAsset);
+						break;
+					}
+				}
+
+				if (found) {
+					continue;
+				}
+
+				AnimationReferenceAsset newAsset = ScriptableObject.CreateInstance<AnimationReferenceAsset>();
+				newAsset.name = assetName;
+				skeletonDataAssetField.SetValue(newAsset, skeletonDataAsset);
+				nameField.SetValue(newAsset, animation.Name);
+				AssetDatabase.AddObjectToAsset(newAsset, skeletonDataAsset);
+			}
+
+			foreach (Object animationReferenceAsset in animationReferenceAssets) {
+				if (!existingAnimations.Contains(animationReferenceAsset)) {
+					AssetDatabase.RemoveObjectFromAsset(animationReferenceAsset);
+				}
+			}
+
+			AssetDatabase.SaveAssets();
 		}
 
 		#region Import Atlases
@@ -1447,5 +1493,6 @@ namespace Spine.Unity.Editor {
 		}
 #endif
 		#endregion
+
 	}
 }
