@@ -985,15 +985,23 @@ namespace Spine.Unity.Editor {
 			lastCameraOrthoGoal = cameraOrthoGoal;
 
 			Camera c = this.PreviewUtilityCamera;
-			float orthoSet = Mathf.Lerp(c.orthographicSize, cameraOrthoGoal, 0.1f);
 
-			c.orthographicSize = orthoSet;
+			float orthoDist = Mathf.Abs(c.orthographicSize - cameraOrthoGoal);
 
-			float dist = Vector3.Distance(c.transform.position, cameraPositionGoal);
+			if(orthoDist > 0.01f) {
+				float orthoSet = Mathf.Lerp(c.orthographicSize, cameraOrthoGoal, 0.1f);
 
-			if (dist > 0f) {
-				Vector3 pos = Vector3.Lerp(c.transform.position, cameraPositionGoal, 0.1f);
-				pos.x = 0;
+				c.orthographicSize = orthoSet;
+				RefreshOnNextUpdate();
+			}
+
+			Vector3 positionGoal = cameraPositionGoal;
+			positionGoal.x = 0;
+
+			float dist = Vector3.Distance(c.transform.position, positionGoal);
+
+			if (dist > 0.01f) {
+				Vector3 pos = Vector3.Lerp(c.transform.position, positionGoal, 0.1f);
 				c.transform.position = pos;
 				c.transform.rotation = Quaternion.identity;
 				RefreshOnNextUpdate();
