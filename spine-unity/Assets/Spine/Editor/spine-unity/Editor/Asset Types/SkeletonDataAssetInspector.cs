@@ -1001,8 +1001,7 @@ namespace Spine.Unity.Editor {
 			float dist = Vector3.Distance(c.transform.position, positionGoal);
 
 			if (dist > 0.01f) {
-				Vector3 pos = Vector3.Lerp(c.transform.position, positionGoal, 0.1f);
-				c.transform.position = pos;
+				c.transform.position = positionGoal;
 				c.transform.rotation = Quaternion.identity;
 				RefreshOnNextUpdate();
 			}
