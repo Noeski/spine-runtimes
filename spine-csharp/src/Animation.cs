@@ -265,6 +265,12 @@ namespace Spine {
 				if (frames[i] > time) return i - step;
 			return n - step;
 		}
+
+		private const float frameRate = 30.0f;
+
+		internal static float FixTime(float time) {
+			return ((int)Math.Round(time * frameRate)) / frameRate;
+		}
 	}
 
 	/// <summary>An interface for timelines which change the property of a bone.</summary>
@@ -408,7 +414,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds</param>
 		public void SetFrame (int frame, float time, float value) {
 			frame <<= 1;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + VALUE] = value;
 		}
 
@@ -455,7 +461,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, float value1, float value2) {
 			frame *= ENTRIES;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + VALUE1] = value1;
 			frames[frame + VALUE2] = value2;
 		}
@@ -1159,7 +1165,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, float r, float g, float b, float a) {
 			frame *= ENTRIES;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + R] = r;
 			frames[frame + G] = g;
 			frames[frame + B] = b;
@@ -1276,7 +1282,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, float r, float g, float b) {
 			frame <<= 2;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + R] = r;
 			frames[frame + G] = g;
 			frames[frame + B] = b;
@@ -1436,7 +1442,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, float r, float g, float b, float a, float r2, float g2, float b2) {
 			frame <<= 3;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + R] = r;
 			frames[frame + G] = g;
 			frames[frame + B] = b;
@@ -1596,7 +1602,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, float r, float g, float b, float r2, float g2, float b2) {
 			frame *= ENTRIES;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + R] = r;
 			frames[frame + G] = g;
 			frames[frame + B] = b;
@@ -1740,7 +1746,7 @@ namespace Spine {
 		/// <param name="frame">Between 0 and <code>frameCount</code>, inclusive.</param>
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, String attachmentName) {
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			attachmentNames[frame] = attachmentName;
 		}
 
@@ -1806,7 +1812,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		/// <param name="vertices">Vertex positions for an unweighted VertexAttachment, or deform offsets if it has weights.</param>
 		public void SetFrame (int frame, float time, float[] vertices) {
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			this.vertices[frame] = vertices;
 		}
 
@@ -2073,7 +2079,7 @@ namespace Spine {
 		/// <summary>Sets the time and event for the specified frame.</summary>
 		/// <param name="frame">Between 0 and <code>frameCount</code>, inclusive.</param>
 		public void SetFrame (int frame, Event e) {
-			frames[frame] = e.time;
+			frames[frame] = FixTime(e.time);
 			events[frame] = e;
 		}
 
@@ -2134,7 +2140,7 @@ namespace Spine {
 		/// <param name="drawOrder">For each slot in <see cref="Skeleton.Slots"/>, the index of the slot in the new draw order. May be null to use
 		///					 setup pose draw order.</param>
 		public void SetFrame (int frame, float time, int[] drawOrder) {
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			drawOrders[frame] = drawOrder;
 		}
 
@@ -2198,7 +2204,7 @@ namespace Spine {
 		public void SetFrame (int frame, float time, float mix, float softness, int bendDirection, bool compress,
 			bool stretch) {
 			frame *= ENTRIES;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + MIX] = mix;
 			frames[frame + SOFTNESS] = softness;
 			frames[frame + BEND_DIRECTION] = bendDirection;
@@ -2309,7 +2315,7 @@ namespace Spine {
 		public void SetFrame (int frame, float time, float mixRotate, float mixX, float mixY, float mixScaleX, float mixScaleY,
 			float mixShearY) {
 			frame *= ENTRIES;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + ROTATE] = mixRotate;
 			frames[frame + X] = mixX;
 			frames[frame + Y] = mixY;
@@ -2526,7 +2532,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, float mixRotate, float mixX, float mixY) {
 			frame <<= 2;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + ROTATE] = mixRotate;
 			frames[frame + X] = mixX;
 			frames[frame + Y] = mixY;
@@ -2626,7 +2632,7 @@ namespace Spine {
 		/// <param name="time">Seconds between frames.</param>
 		public void SetFrame (int frame, float time, SequenceMode mode, int index, float delay) {
 			frame *= ENTRIES;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + MODE] = (int)mode | (index << 4);
 			frames[frame + DELAY] = delay;
 		}
