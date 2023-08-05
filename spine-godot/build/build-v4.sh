@@ -83,7 +83,7 @@ if [ "$os" == "macos" ] && [ $dev == "false" ]; then
 	if [ $mono == "true" ]; then
 		echo "Building C# glue and assemblies."
 		"./bin/$godot_exe_host" --generate-mono-glue modules/mono/glue
-		./modules/mono/build_scripts/build_assemblies.py --godot-output-dir ./bin --push-nupkgs-local ../godot-spine-csharp
+		python3 ./modules/mono/build_scripts/build_assemblies.py --godot-output-dir ./bin --push-nupkgs-local ../godot-spine-csharp
 	fi
 	pushd bin
 	cp -r ../misc/dist/macos_tools.app .
@@ -102,7 +102,7 @@ else
 	if [ $mono == "true" ]; then
 		echo "Building C# glue and assemblies."
 		"./bin/$godot_exe_host" --headless --generate-mono-glue modules/mono/glue
-		./modules/mono/build_scripts/build_assemblies.py --godot-output-dir ./bin --push-nupkgs-local ../godot-nuget
+		python3 ./modules/mono/build_scripts/build_assemblies.py --godot-output-dir ./bin --push-nupkgs-local ../godot-nuget
 	fi
 	cp compile_commands.json ../build
 	if [ -f "bin/godot.linuxbsd.editor.x86_64$mono_extension" ]; then
