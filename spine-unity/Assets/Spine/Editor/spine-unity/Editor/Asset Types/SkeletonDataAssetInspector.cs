@@ -758,7 +758,9 @@ namespace Spine.Unity.Editor {
 		Action Repaint;
 		public event Action OnDrawHandles;
 		public event Action<string> OnSkinChanged;
-
+		public bool ShouldDrawSkinToolbar = true;
+		public bool ShouldDrawTimeBar = true;
+		
 		Texture previewTexture;
 		PreviewRenderUtility previewRenderUtility;
 		Camera PreviewUtilityCamera {
@@ -906,9 +908,16 @@ namespace Spine.Unity.Editor {
 					GUI.DrawTexture(r, previewTexture, ScaleMode.StretchToFill, false);
 			}
 
-			DrawSkinToolbar(r);
+			if (ShouldDrawSkinToolbar) {
+				DrawSkinToolbar(r);
+			}
+			
 			//DrawSetupPoseButton(r);
-			DrawTimeBar(r);
+
+			if (ShouldDrawTimeBar) {
+				DrawTimeBar(r);
+			}
+			
 			HandleMouseScroll(r);
 		}
 
