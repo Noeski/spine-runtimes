@@ -133,9 +133,11 @@ namespace Spine.Unity.Editor {
 				foreach (string guid in guids) {
 					string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
 					if (!string.IsNullOrEmpty(path)) {
-						AnimationReferenceAsset referenceAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<AnimationReferenceAsset>(path);
-						if (referenceAsset.SkeletonDataAsset == skeletonDataAsset)
-							func(referenceAsset);
+						Object[] assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(path);
+						foreach(Object asset in assets) {
+							if (asset is AnimationReferenceAsset referenceAsset && referenceAsset.SkeletonDataAsset == skeletonDataAsset)
+								func(referenceAsset);
+						}
 					}
 				}
 			}
