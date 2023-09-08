@@ -44,6 +44,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace Spine.Unity.Editor {
+	using Event = UnityEngine.Event;
 	using Icons = SpineEditorUtilities.Icons;
 
 	[CustomEditor(typeof(SkeletonGraphic))]
@@ -399,6 +400,9 @@ namespace Spine.Unity.Editor {
 		}
 
 		protected void OnSceneGUI () {
+			if (Event.current.type != EventType.Repaint)
+				return;
+
 			SkeletonGraphic skeletonGraphic = (SkeletonGraphic)target;
 			if (skeletonGraphic.EditReferenceRect) {
 				SpineHandles.DrawRectTransformRect(skeletonGraphic, Color.gray);

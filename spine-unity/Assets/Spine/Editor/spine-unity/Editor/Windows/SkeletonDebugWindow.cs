@@ -42,6 +42,7 @@ using UnityEngine;
 
 namespace Spine.Unity.Editor {
 	using Editor = UnityEditor.Editor;
+	using Event = UnityEngine.Event;
 	using Icons = SpineEditorUtilities.Icons;
 
 	public class SkeletonDebugWindow : EditorWindow {
@@ -89,7 +90,7 @@ namespace Spine.Unity.Editor {
 		static bool staticLostValues = true;
 
 		void OnSceneGUI (SceneView sceneView) {
-			if (skeleton == null || skeletonRenderer == null || !skeletonRenderer.valid || isPrefab)
+			if (Event.current.type != EventType.Repaint || skeleton == null || skeletonRenderer == null || !skeletonRenderer.valid || isPrefab)
 				return;
 
 			Transform transform = skeletonRenderer.transform;

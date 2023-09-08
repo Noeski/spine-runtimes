@@ -85,6 +85,9 @@ namespace Spine.Unity.Editor {
 		}
 
 		public void OnSceneGUI () {
+			if (Event.current.type != EventType.Repaint)
+				return;
+
 			PointFollower tbf = target as PointFollower;
 			SkeletonRenderer skeletonRendererComponent = tbf.skeletonRenderer;
 			if (skeletonRendererComponent == null)
