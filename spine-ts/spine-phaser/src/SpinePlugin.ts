@@ -28,7 +28,7 @@
  *****************************************************************************/
 
 import Phaser from "phaser";
-import { SPINE_ATLAS_CACHE_KEY, SPINE_CONTAINER_TYPE, SPINE_GAME_OBJECT_TYPE, SPINE_SKELETON_DATA_FILE_TYPE, SPINE_ATLAS_FILE_TYPE, SPINE_SKELETON_FILE_CACHE_KEY as SPINE_SKELETON_DATA_CACHE_KEY } from "./keys";
+import { SPINE_ATLAS_CACHE_KEY, SPINE_GAME_OBJECT_TYPE, SPINE_SKELETON_DATA_FILE_TYPE, SPINE_ATLAS_FILE_TYPE, SPINE_SKELETON_FILE_CACHE_KEY as SPINE_SKELETON_DATA_CACHE_KEY } from "./keys";
 import { AtlasAttachmentLoader, GLTexture, SceneRenderer, Skeleton, SkeletonBinary, SkeletonData, SkeletonJson, TextureAtlas } from "@esotericsoftware/spine-webgl"
 import { SpineGameObject, SpineGameObjectBoundsProvider } from "./SpineGameObject";
 import { CanvasTexture, SkeletonRenderer } from "@esotericsoftware/spine-canvas";
@@ -74,9 +74,13 @@ export interface SpineGameObjectConfig extends Phaser.Types.GameObjects.GameObje
 export class SpinePlugin extends Phaser.Plugins.ScenePlugin {
 	game: Phaser.Game;
 	private isWebGL: boolean;
-	private gl: WebGLRenderingContext | null;
-	webGLRenderer: SceneRenderer | null;
+	gl: WebGLRenderingContext | null;
+	static gameWebGLRenderer: SceneRenderer | null = null;
+	get webGLRenderer (): SceneRenderer | null {
+		return SpinePlugin.gameWebGLRenderer;
+	}
 	canvasRenderer: SkeletonRenderer | null;
+	phaserRenderer: Phaser.Renderer.Canvas.CanvasRenderer | Phaser.Renderer.WebGL.WebGLRenderer;
 	private skeletonDataCache: Phaser.Cache.BaseCache;
 	private atlasCache: Phaser.Cache.BaseCache;
 
@@ -85,7 +89,7 @@ export class SpinePlugin extends Phaser.Plugins.ScenePlugin {
 		this.game = pluginManager.game;
 		this.isWebGL = this.game.config.renderType === 2;
 		this.gl = this.isWebGL ? (this.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer).gl : null;
-		this.webGLRenderer = null;
+		this.phaserRenderer = this.game.renderer;
 		this.canvasRenderer = null;
 		this.skeletonDataCache = this.game.cache.addCustom(SPINE_SKELETON_DATA_CACHE_KEY);
 		this.atlasCache = this.game.cache.addCustom(SPINE_ATLAS_CACHE_KEY);
@@ -120,7 +124,7 @@ export class SpinePlugin extends Phaser.Plugins.ScenePlugin {
 
 		let self = this;
 		let addSpineGameObject = function (this: Phaser.GameObjects.GameObjectFactory, x: number, y: number, dataKey: string, atlasKey: string, boundsProvider: SpineGameObjectBoundsProvider) {
-			let gameObject = new SpineGameObject(scene, self, x, y, dataKey, atlasKey, boundsProvider);
+			let gameObject = new SpineGameObject(this.scene, self, x, y, dataKey, atlasKey, boundsProvider);
 			this.displayList.add(gameObject);
 			this.updateList.add(gameObject);
 			return gameObject;
@@ -136,14 +140,15 @@ export class SpinePlugin extends Phaser.Plugins.ScenePlugin {
 			}
 			return Phaser.GameObjects.BuildGameObject(this.scene, gameObject, config);
 		}
-		pluginManager.registerGameObject(SPINE_GAME_OBJECT_TYPE, addSpineGameObject, makeSpineGameObject);
+		pluginManager.registerGameObject((window as any).SPINE_GAME_OBJECT_TYPE ? (window as any).SPINE_GAME_OBJECT_TYPE : SPINE_GAME_OBJECT_TYPE, addSpineGameObject, makeSpineGameObject);
 	}
 
+	static rendererId = 0;
 	boot () {
 		Skeleton.yDown = true;
 		if (this.isWebGL) {
-			if (!this.webGLRenderer) {
-				this.webGLRenderer = new SceneRenderer((this.game.renderer! as Phaser.Renderer.WebGL.WebGLRenderer).canvas, this.gl!, true);
+			if (!SpinePlugin.gameWebGLRenderer) {
+				SpinePlugin.gameWebGLRenderer = new SceneRenderer((this.game.renderer! as Phaser.Renderer.WebGL.WebGLRenderer).canvas, this.gl!, true);
 			}
 			this.onResize();
 			this.game.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
@@ -186,8 +191,7 @@ export class SpinePlugin extends Phaser.Plugins.ScenePlugin {
 	}
 
 	gameDestroy () {
-		this.pluginManager.removeGameObject(SPINE_GAME_OBJECT_TYPE, true, true);
-		this.pluginManager.removeGameObject(SPINE_CONTAINER_TYPE, true, true);
+		this.pluginManager.removeGameObject((window as any).SPINE_GAME_OBJECT_TYPE ? (window as any).SPINE_GAME_OBJECT_TYPE : SPINE_GAME_OBJECT_TYPE, true, true);
 		if (this.webGLRenderer) this.webGLRenderer.dispose();
 	}
 
@@ -255,8 +259,22 @@ enum SpineSkeletonDataFileType {
 	binary
 }
 
+interface SpineSkeletonDataFileConfig {
+	key: string;
+	url: string;
+	type: "spineJson" | "spineBinary";
+	xhrSettings?: Phaser.Types.Loader.XHRSettingsObject
+}
+
 class SpineSkeletonDataFile extends Phaser.Loader.MultiFile {
-	constructor (loader: Phaser.Loader.LoaderPlugin, key: string, url: string, public fileType: SpineSkeletonDataFileType, xhrSettings: Phaser.Types.Loader.XHRSettingsObject) {
+	constructor (loader: Phaser.Loader.LoaderPlugin, key: string | SpineSkeletonDataFileConfig, url?: string, public fileType?: SpineSkeletonDataFileType, xhrSettings?: Phaser.Types.Loader.XHRSettingsObject) {
+		if (typeof key !== "string") {
+			const config = key;
+			key = config.key;
+			url = config.url;
+			fileType = config.type === "spineJson" ? SpineSkeletonDataFileType.json : SpineSkeletonDataFileType.binary;
+			xhrSettings = config.xhrSettings;
+		}
 		let file = null;
 		let isJson = fileType == SpineSkeletonDataFileType.json;
 		if (isJson) {
@@ -286,8 +304,23 @@ class SpineSkeletonDataFile extends Phaser.Loader.MultiFile {
 	}
 }
 
+interface SpineAtlasFileConfig {
+	key: string;
+	url: string;
+	premultipliedAlpha?: boolean;
+	xhrSettings?: Phaser.Types.Loader.XHRSettingsObject;
+}
+
 class SpineAtlasFile extends Phaser.Loader.MultiFile {
-	constructor (loader: Phaser.Loader.LoaderPlugin, key: string, url: string, public premultipliedAlpha: boolean = true, xhrSettings: Phaser.Types.Loader.XHRSettingsObject) {
+	constructor (loader: Phaser.Loader.LoaderPlugin, key: string | SpineAtlasFileConfig, url?: string, public premultipliedAlpha: boolean = true, xhrSettings?: Phaser.Types.Loader.XHRSettingsObject) {
+		if (typeof key !== "string") {
+			const config = key;
+			key = config.key;
+			url = config.url;
+			premultipliedAlpha = config.premultipliedAlpha ?? true;
+			xhrSettings = config.xhrSettings;
+		}
+
 		super(loader, SPINE_ATLAS_FILE_TYPE, key, [
 			new Phaser.Loader.FileTypes.TextFile(loader, {
 				key: key,

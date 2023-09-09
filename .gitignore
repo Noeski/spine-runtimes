@@ -171,7 +171,9 @@ spine-godot/spine_godot/spine-cpp
 spine-godot/spine_godot/__pycache__
 spine-godot/example/.import
 spine-godot/spine_godot/*.obj
+*.obj
 *.bc
+*.o
 spine-godot/example/.godot
 spine-godot/example-v4/.godot
 spine-cocos2dx/example/build-macos
@@ -191,3 +193,4 @@ spine-flutter/src/spine-cpp
 spine-godot/godot-nuget
 spine-godot/godot-spine-csharp
 spine-ue4/Plugins/Developer
+spine-haxe/export
