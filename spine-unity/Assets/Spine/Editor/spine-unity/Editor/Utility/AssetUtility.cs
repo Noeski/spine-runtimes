@@ -1095,6 +1095,7 @@ namespace Spine.Unity.Editor {
 					skeletonDataAsset.atlasAssets = atlasAssets;
 					SpineEditorUtilities.ClearSkeletonDataAsset(skeletonDataAsset);
 				}
+				UpdateAnimationReferenceAssets(skeletonDataAsset);
 				SkeletonData skeletonData = skeletonDataAsset.GetSkeletonData(true);
 				if (skeletonData != null)
 					BlendModeMaterialsUtility.UpdateBlendModeMaterials(skeletonDataAsset, ref skeletonData);
