@@ -1,31 +1,76 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine;
 
-import openfl.utils.ByteArray;
-import openfl.Vector;
+import haxe.io.FPHelper;
+import haxe.io.Bytes;
 
 class BinaryInput {
-	private var bytes:ByteArray;
+	private var bytes:Bytes;
+	private var index:Int = 0;
 
-	public var strings:Vector<String> = new Vector<String>();
+	public var strings:Array<String> = new Array<String>();
 
-	public function new(bytes:ByteArray) {
+	public function new(bytes:Bytes) {
 		this.bytes = bytes;
 	}
 
 	public function readByte():Int {
-		return bytes.readByte();
+		var result = bytes.get(index++);
+		if ((result & 0x80) != 0) {
+			result |= 0xffffff00;
+		}
+		return result;
 	}
 
 	public function readUnsignedByte():Int {
-		return bytes.readUnsignedByte();
+		return bytes.get(index++);
 	}
 
 	public function readShort():Int {
-		return bytes.readShort();
+		var ch1 = readUnsignedByte();
+		var ch2 = readUnsignedByte();
+		var result = ((ch1 << 8) | ch2);
+		if ((result & 0x8000) != 0) {
+			result |= 0xFFFF0000;
+		}
+		return result;
 	}
 
 	public function readInt32():Int {
-		return bytes.readInt();
+		var ch1 = readUnsignedByte();
+		var ch2 = readUnsignedByte();
+		var ch3 = readUnsignedByte();
+		var ch4 = readUnsignedByte();
+		var result = (ch1 << 24) | (ch2 << 16) | (ch3 << 8) | ch4;
+		return result;
 	}
 
 	public function readInt(optimizePositive:Bool):Int {
@@ -51,8 +96,8 @@ class BinaryInput {
 	}
 
 	public function readStringRef():String {
-		var index:Int = readInt(true);
-		return index == 0 ? null : strings[index - 1];
+		var idx:Int = readInt(true);
+		return idx == 0 ? null : strings[idx - 1];
 	}
 
 	public function readString():String {
@@ -76,7 +121,7 @@ class BinaryInput {
 					chars += String.fromCharCode(((b & 0x0F) << 12 | (readByte() & 0x3F) << 6 | readByte() & 0x3F));
 					i += 3;
 				default:
-					chars += String.fromCharCode(b);
+					chars += String.fromCharCode(b & 0xff);
 					i++;
 			}
 		}
@@ -84,7 +129,7 @@ class BinaryInput {
 	}
 
 	public function readFloat():Float {
-		return bytes.readFloat();
+		return FPHelper.i32ToFloat(readInt32());
 	}
 
 	public function readBoolean():Bool {

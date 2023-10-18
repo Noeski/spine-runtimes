@@ -1,7 +1,33 @@
-package spine;
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
 
-import openfl.errors.ArgumentError;
-import openfl.Vector;
+package spine;
 
 class Bone implements Updatable {
 	static public var yDown:Bool = false;
@@ -9,7 +35,7 @@ class Bone implements Updatable {
 	private var _data:BoneData;
 	private var _skeleton:Skeleton;
 	private var _parent:Bone;
-	private var _children:Vector<Bone> = new Vector<Bone>();
+	private var _children:Array<Bone> = new Array<Bone>();
 
 	public var x:Float = 0;
 	public var y:Float = 0;
@@ -37,9 +63,9 @@ class Bone implements Updatable {
 	/** @param parent May be null. */
 	public function new(data:BoneData, skeleton:Skeleton, parent:Bone) {
 		if (data == null)
-			throw new ArgumentError("data cannot be null.");
+			throw new SpineException("data cannot be null.");
 		if (skeleton == null)
-			throw new ArgumentError("skeleton cannot be null.");
+			throw new SpineException("skeleton cannot be null.");
 		_data = data;
 		_skeleton = skeleton;
 		_parent = parent;
@@ -202,9 +228,9 @@ class Bone implements Updatable {
 		return _parent;
 	}
 
-	public var children(get, never):Vector<Bone>;
+	public var children(get, never):Array<Bone>;
 
-	private function get_children():Vector<Bone> {
+	private function get_children():Array<Bone> {
 		return _children;
 	}
 
@@ -280,7 +306,7 @@ class Bone implements Updatable {
 		}
 	}
 
-	public function worldToLocal(world:Vector<Float>):Void {
+	public function worldToLocal(world:Array<Float>):Void {
 		var a:Float = a, b:Float = b, c:Float = c, d:Float = d;
 		var invDet:Float = 1 / (a * d - b * c);
 		var x:Float = world[0] - worldX, y:Float = world[1] - worldY;
@@ -288,7 +314,7 @@ class Bone implements Updatable {
 		world[1] = (y * a * invDet - x * c * invDet);
 	}
 
-	public function localToWorld(local:Vector<Float>):Void {
+	public function localToWorld(local:Array<Float>):Void {
 		var localX:Float = local[0], localY:Float = local[1];
 		local[0] = localX * a + localY * b + worldX;
 		local[1] = localX * c + localY * d + worldY;

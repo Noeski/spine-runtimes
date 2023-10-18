@@ -1,11 +1,37 @@
-package spine;
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
 
-import openfl.errors.ArgumentError;
-import openfl.Vector;
+package spine;
 
 class TransformConstraint implements Updatable {
 	private var _data:TransformConstraintData;
-	private var _bones:Vector<Bone>;
+	private var _bones:Array<Bone>;
 
 	public var target:Bone;
 	public var mixRotate:Float = 0;
@@ -15,15 +41,15 @@ class TransformConstraint implements Updatable {
 	public var mixScaleY:Float = 0;
 	public var mixShearY:Float = 0;
 
-	private var _temp:Vector<Float> = new Vector<Float>(2, true);
+	private var _temp:Array<Float> = new Array<Float>();
 
 	public var active:Bool = false;
 
 	public function new(data:TransformConstraintData, skeleton:Skeleton) {
 		if (data == null)
-			throw new ArgumentError("data cannot be null.");
+			throw new SpineException("data cannot be null.");
 		if (skeleton == null)
-			throw new ArgumentError("skeleton cannot be null.");
+			throw new SpineException("skeleton cannot be null.");
 		_data = data;
 		mixRotate = data.mixRotate;
 		mixX = data.mixX;
@@ -31,7 +57,7 @@ class TransformConstraint implements Updatable {
 		mixScaleX = data.mixScaleX;
 		mixScaleY = data.mixScaleY;
 		mixShearY = data.mixShearY;
-		_bones = new Vector<Bone>();
+		_bones = new Array<Bone>();
 		for (boneData in data.bones) {
 			_bones.push(skeleton.findBone(boneData.name));
 		}
@@ -43,7 +69,7 @@ class TransformConstraint implements Updatable {
 	}
 
 	public function update():Void {
-		if (mixRotate == 0 && mixX == 0 && mixY == 0 && mixScaleX == 0 && mixScaleX == 0 && mixShearY == 0)
+		if (mixRotate == 0 && mixX == 0 && mixY == 0 && mixScaleX == 0 && mixScaleY == 0 && mixShearY == 0)
 			return;
 
 		if (data.local) {
@@ -159,7 +185,7 @@ class TransformConstraint implements Updatable {
 			}
 
 			if (translate) {
-				var temp:Vector<Float> = _temp;
+				var temp:Array<Float> = _temp;
 				temp[0] = _data.offsetX;
 				temp[1] = _data.offsetY;
 				target.localToWorld(temp);
@@ -247,9 +273,9 @@ class TransformConstraint implements Updatable {
 		return _data;
 	}
 
-	public var bones(get, never):Vector<Bone>;
+	public var bones(get, never):Array<Bone>;
 
-	private function get_bones():Vector<Bone> {
+	private function get_bones():Array<Bone> {
 		return _bones;
 	}
 

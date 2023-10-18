@@ -1,3 +1,5 @@
+> **Note**: this runtime is a work in progress. Please follow this issue to get alerted once the runtime is deemed complete. https://github.com/EsotericSoftware/spine-runtimes/issues/2249
+
 # spine-haxe
 
 The spine-haxe runtime provides functionality to load, manipulate and render [Spine](http://esotericsoftware.com) skeletal animation data using [Haxe](https://haxe.org/) in combination with [OpenFL](https://www.openfl.org/) and [Lime](https://lime.openfl.org/).
@@ -15,6 +17,8 @@ For the official legal terms governing the Spine Runtimes, please read the [Spin
 ## Spine version
 
 spine-haxe works with data exported from Spine 4.1.xx.
+
+spine-haxe supports all Spine features except premultiplied alpha atlases and two color tinting.
 
 ## Setup
 
@@ -51,4 +55,4 @@ As an IDE, we recommend [Visual Studio Code](https://code.visualstudio.com/) wit
 
 The extensions provide IDE features like auto-completion, debugging, and build support.
 
-To debug the HTML5 build, set the Lime target in the status bar at the bottom of VS Code to `HTML5 / Debug`. Next, press `CTRL+SHIFT+B` (`CMD+SHIFT+B` on macOS) to build the project. Run the `lime` run configuration by pressing `F5`. This will start a webserver at `http://localhost:3000`. Finally, start the `web` run configuration. If you modify code, rebuild and restart the `web` configuration.
+To debug a build, set the corresponding Lime target in the status bar at the bottom of VS Code to e.g. `HTML5 / Debug`. Run the `lime` run configuration by pressing `F5`.

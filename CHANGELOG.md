@@ -104,7 +104,18 @@
   * Tint Black: Added support for [Tint Black](http://en.esotericsoftware.com/spine-slots#Tint-black) functionality at all Spine URP shaders (2D and 3D shaders) and at all standard pipeline `Spine/Sprite` shaders. This feature can be enabled via the `Tint Black` material parameter in the Inspector. Note: The URP Sprite shaders provided in the Spine URP Shaders extension UPM package require the latest version of the spine-unity runtime (package version 4.1.12, 2023-05-31 or newer) to display the added material parameters in the Inspector GUI.
   * Added `SkeletonGraphic.MeshScale` property to allow access to calculated mesh scale. `MeshScale` is based on (1) Canvas pixels per unit, and (2) `RectTransform` bounds when using `Layout Scale Mode` other than `None` at `SkeletonGraphic` which scales the skeleton mesh to fit the parent `RectTransform` bounds accordingly.
   * Added `updateSeparatorPartScale` property to `SkeletonGraphic` to let render separator parts follow the scale (lossy scale) of the `SkeletonGraphic` GameObject. Defaults to `false` to maintain existing behaviour.
-  * Added experimental `EditorSkeletonPlayer` component to allow Editor playback of the initial animation set at `SkeletonAnimation` or `SkeletonGraphic` components. Add this component to your skeleton GameObject to enable the in-editor animation preview. Allows configurations for continuous playback when selected, deselected, and alternative single-frame preview by setting `Fixed Track Time` to any value other than 0. Limitations: At skeletons with variable material count the Inspector preview may be too unresponsive. It is then recommended to disable the `EditorSkeletonPlayer` component (at the top of the Inspector) to make it responsive again, then you can disable `Play When Selected` and re-enable the component to preview playback only when deselected. 
+  * Added experimental `EditorSkeletonPlayer` component to allow Editor playback of the initial animation set at `SkeletonAnimation` or `SkeletonGraphic` components. Add this component to your skeleton GameObject to enable the in-editor animation preview. Allows configurations for continuous playback when selected, deselected, and alternative single-frame preview by setting `Fixed Track Time` to any value other than 0. Limitations: At skeletons with variable material count the Inspector preview may be too unresponsive. It is then recommended to disable the `EditorSkeletonPlayer` component (at the top of the Inspector) to make it responsive again, then you can disable `Play When Selected` and re-enable the component to preview playback only when deselected.
+  * Added example component `RenderCombinedMesh` to render a combined mesh of multiple meshes or submeshes. This is required by `OutlineOnly` shaders to render a combined outline when using `SkeletonRenderSeparator` or multiple atlas pages which would normally lead to outlines around individual parts. To add a combined outline to your SkeletenRenderer:
+    1) Add a child GameObject and move it a bit back (e.g. position Z = 0.01).
+    2) Add a `RenderCombinedMesh` component, provided in the `Spine Examples/Scripts/Sample Components` directory.
+    3) Copy the original material, add *_Outline* to its name and set the shader to your outline-only shader like `Universal Render Pipeline/Spine/Outline/Skeleton-OutlineOnly` or `Spine/Outline/OutlineOnly-ZWrite`.
+    4) Assign this *_Outline* material at the new child GameObject's `MeshRenderer` component.
+    If you are using `SkeletonRenderSeparator` and need to enable and disable the `SkeletonRenderSeparator` component at runtime, you can increase the `RenderCombinedMesh` `Reference Renderers` array by one and assign the `SkeletonRenderer` itself at the last entry after the parts renderers. Disabled `MeshRenderer` components will be skipped when combining the final mesh, so the combined mesh is automatically filled from the desired active renderers.
+  * Timeline extension package: Added static `EditorEvent` callback to allow editor scripts to react to animation events outside of play-mode. Register to the events via `Spine.Unity.Playables.SpineAnimationStateMixerBehaviour.EditorEvent += YourCallback;`.
+  * URP Shaders: Added `Depth Write` property to shaders `Universal Render Pipeline/Spine/Skeleton` and `Universal Render Pipeline/Spine/Skeleton Lit`. Defaults to false to maintain existing behaviour.
+  * Added `Animation Update` mode (called `UpdateTiming` in code) `In Late Update` for `SkeletonAnimation`, `SkeletonMecanim` and `SkeletonGraphic`. This allows you to update the `SkeletonMecanim` skeleton in the same frame that the Mecanim Animator updated its state, which happens between `Update` and `LateUpdate`.
+  * URP Shaders: Added URP "Blend Mode" shader variants for both URP 3D and URP 2D renderers. They are listed under shader name "Universal Render Pipeline/Spine/Blend Modes/" and "Universal Render Pipeline/2D/Spine/Blend Modes/" respectively.
+  * URP Shaders: Added support for [Tint Black](http://en.esotericsoftware.com/spine-slots#Tint-black) functionality at "Blend Modes" Spine URP shaders (2D and 3D shaders).
 
 * **Breaking changes**
   * Made `SkeletonGraphic.unscaledTime` parameter protected, use the new property `UnscaledTime` instead.
@@ -116,6 +127,7 @@
   * Shader macro `RETURN_UNLIT_IF_ADDITIVE_SLOT` in `spine-unity/Shaders/Sprite/CGIncludes/ShaderShared.cginc` has been deprecated and will be removed in spine-unity 4.2. Use RETURN_UNLIT_IF_ADDITIVE_SLOT_TINT instead.
 
 * **Restructuring (Non-Breaking)**
+  * Moved Spine URP Shaders Examples directory from the main package directory to Samples which can be installed via the Unity Package Manager. To import, select the `Spine Universal RP Shaders` package in the Package Manager window, expand `Samples` at the bottom and hit `Import` next to `Examples`. This follows the standard [samples guideline](https://docs.unity3d.com/Manual/cus-samples.html) and prevents warning messages about unexpectedly altered immutable assets.
 
 ### XNA/MonoGame
 * **Breaking change**: Removed spine-xna in favor of spine-monogame. See https://github.com/EsotericSoftware/spine-runtimes/issues/1949
@@ -159,6 +171,7 @@
 ### WebGL backend
   * `PolygonBatcher` can now disable culling automatically if the static variable `PolygonBatcher.disableCulling` is set to true.
   * Added `SpineCanvas`, a simpler way to render a scene via spine-webgl. See `spine-ts/spine-webgl/examples/barebones.html` and `spine-ts/spine-webgl/examples/mix-and-match.html`.
+  * Added `SpineCanavs.dispose()` to halt the updating and rendering of the canvas.
 
 ### Canvas backend
   * Improved example.

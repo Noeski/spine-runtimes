@@ -122,6 +122,8 @@ void SpineAtlasResource::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "source_path"), "", "get_source_path");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "textures"), "", "get_textures");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "normal_maps"), "", "get_normal_maps");
+
+	ADD_SIGNAL(MethodInfo("skeleton_atlas_changed"));
 }
 
 SpineAtlasResource::SpineAtlasResource() : atlas(nullptr), texture_loader(nullptr), normal_map_prefix("n") {
@@ -194,7 +196,8 @@ Error SpineAtlasResource::load_from_file(const String &path) {
 
 	clear();
 	texture_loader = new GodotSpineTextureLoader(&textures, &normal_maps, normal_map_prefix);
-	atlas = new spine::Atlas(atlas_data.utf8(), atlas_data.size(), source_path.get_base_dir().utf8(), texture_loader);
+	auto utf8 = atlas_data.utf8();
+	atlas = new spine::Atlas(utf8.ptr(), utf8.size(), source_path.get_base_dir().utf8(), texture_loader);
 	if (atlas) return OK;
 
 	clear();
@@ -228,6 +231,28 @@ Error SpineAtlasResource::save_to_file(const String &path) {
 #endif
 	return OK;
 }
+
+#if VERSION_MAJOR > 3
+Error SpineAtlasResource::copy_from(const Ref<Resource> &p_resource) {
+	auto error = Resource::copy_from(p_resource);
+	if (error != OK) return error;
+
+	const Ref<SpineAtlasResource> &spineAtlas = static_cast<const Ref<SpineAtlasResource> &>(p_resource);
+	this->clear();
+	this->atlas = spineAtlas->atlas;
+	this->texture_loader = spineAtlas->texture_loader;
+	spineAtlas->clear_native_data();
+
+	this->source_path = spineAtlas->source_path;
+	this->atlas_data = spineAtlas->atlas_data;
+	this->normal_map_prefix = spineAtlas->normal_map_prefix;
+	this->textures = spineAtlas->textures;
+	this->normal_maps = spineAtlas->normal_maps;
+	emit_signal(SNAME("skeleton_file_changed"));
+
+	return OK;
+}
+#endif
 
 #if VERSION_MAJOR > 3
 RES SpineAtlasResourceFormatLoader::load(const String &path, const String &original_path, Error *error, bool use_sub_threads, float *progress, CacheMode cache_mode) {

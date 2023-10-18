@@ -1,53 +1,83 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine.starling;
 
-import starling.utils.Max;
+import starling.animation.IAnimatable;
 import openfl.geom.Matrix;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
-import openfl.Vector;
-import spine.atlas.AtlasRegion;
-import spine.attachments.Attachment;
-import spine.attachments.ClippingAttachment;
-import spine.attachments.MeshAttachment;
-import spine.attachments.RegionAttachment;
 import spine.Bone;
 import spine.Skeleton;
 import spine.SkeletonClipping;
 import spine.SkeletonData;
 import spine.Slot;
-import spine.VertexEffect;
+import spine.animation.AnimationState;
+import spine.animation.AnimationStateData;
+import spine.attachments.Attachment;
+import spine.attachments.ClippingAttachment;
+import spine.attachments.MeshAttachment;
+import spine.attachments.RegionAttachment;
 import starling.display.BlendMode;
 import starling.display.DisplayObject;
-import starling.display.Image;
 import starling.rendering.IndexData;
 import starling.rendering.Painter;
 import starling.rendering.VertexData;
+import starling.textures.Texture;
 import starling.utils.Color;
 import starling.utils.MatrixUtil;
+import starling.utils.Max;
 
-class SkeletonSprite extends DisplayObject {
+class SkeletonSprite extends DisplayObject implements IAnimatable {
 	static private var _tempPoint:Point = new Point();
 	static private var _tempMatrix:Matrix = new Matrix();
-	static private var _tempVertices:Vector<Float> = new Vector<Float>();
-	static private var blendModes:Vector<String> = Vector.ofArray([BlendMode.NORMAL, BlendMode.ADD, BlendMode.MULTIPLY, BlendMode.SCREEN]);
+	static private var _tempVertices:Array<Float> = new Array<Float>();
+	static private var blendModes:Array<String> = [BlendMode.NORMAL, BlendMode.ADD, BlendMode.MULTIPLY, BlendMode.SCREEN];
 
 	private var _skeleton:Skeleton;
+
+	public var _state:AnimationState;
+
 	private var _smoothing:String = "bilinear";
 
 	private static var clipper:SkeletonClipping = new SkeletonClipping();
-	private static var QUAD_INDICES:Vector<Int> = Vector.ofArray([0, 1, 2, 2, 3, 0]);
-
-	public var vertexEffect:VertexEffect;
+	private static var QUAD_INDICES:Array<Int> = [0, 1, 2, 2, 3, 0];
 
 	private var tempLight:spine.Color = new spine.Color(0, 0, 0);
 	private var tempDark:spine.Color = new spine.Color(0, 0, 0);
-	private var tempVertex:spine.Vertex = new spine.Vertex();
 
-	public function new(skeletonData:SkeletonData) {
+	public function new(skeletonData:SkeletonData, animationStateData:AnimationStateData = null) {
 		super();
 		Bone.yDown = true;
 		_skeleton = new Skeleton(skeletonData);
 		_skeleton.updateWorldTransform();
+		_state = new AnimationState(animationStateData != null ? animationStateData : new AnimationStateData(skeletonData));
 	}
 
 	override public function render(painter:Painter):Void {
@@ -57,7 +87,7 @@ class SkeletonSprite extends DisplayObject {
 		var r:Float = skeleton.color.r * 255;
 		var g:Float = skeleton.color.g * 255;
 		var b:Float = skeleton.color.b * 255;
-		var drawOrder:Vector<Slot> = skeleton.drawOrder;
+		var drawOrder:Array<Slot> = skeleton.drawOrder;
 		var attachmentColor:spine.Color;
 		var rgb:Int;
 		var a:Float;
@@ -67,12 +97,9 @@ class SkeletonSprite extends DisplayObject {
 		var verticesCount:Int;
 		var indicesLength:Int;
 		var indexData:IndexData;
-		var indices:Vector<Int> = null;
+		var indices:Array<Int> = null;
 		var vertexData:VertexData;
-		var uvs:Vector<Float>;
-
-		if (vertexEffect != null)
-			vertexEffect.begin(skeleton);
+		var uvs:Array<Float>;
 
 		for (slot in drawOrder) {
 			if (!slot.bone.active) {
@@ -80,25 +107,22 @@ class SkeletonSprite extends DisplayObject {
 				continue;
 			}
 
-			var worldVertices:Vector<Float> = _tempVertices;
+			var worldVertices:Array<Float> = _tempVertices;
 			if (Std.isOfType(slot.attachment, RegionAttachment)) {
 				var region:RegionAttachment = cast(slot.attachment, RegionAttachment);
 				verticesLength = 8;
 				verticesCount = verticesLength >> 1;
 				if (worldVertices.length < verticesLength)
-					worldVertices.length = verticesLength;
-				region.computeWorldVertices(slot.bone, worldVertices, 0, 2);
+					worldVertices.resize(verticesLength);
+				region.computeWorldVertices(slot, worldVertices, 0, 2);
 
 				mesh = null;
 				if (Std.isOfType(region.rendererObject, SkeletonMesh)) {
 					mesh = cast(region.rendererObject, SkeletonMesh);
+					mesh.texture = region.region.texture;
 					indices = QUAD_INDICES;
 				} else {
-					if (Std.isOfType(region.rendererObject, Image)) {
-						region.rendererObject = mesh = new SkeletonMesh(cast(region.rendererObject, Image).texture);
-					} else if (Std.isOfType(region.rendererObject, AtlasRegion)) {
-						region.rendererObject = mesh = new SkeletonMesh(cast(cast(region.rendererObject, AtlasRegion).rendererObject, Image).texture);
-					}
+					mesh = region.rendererObject = new SkeletonMesh(cast(region.region.texture, Texture));
 
 					indexData = mesh.getIndexData();
 					indices = QUAD_INDICES;
@@ -117,20 +141,16 @@ class SkeletonSprite extends DisplayObject {
 				verticesLength = meshAttachment.worldVerticesLength;
 				verticesCount = verticesLength >> 1;
 				if (worldVertices.length < verticesLength)
-					worldVertices.length = verticesLength;
+					worldVertices.resize(verticesLength);
 				meshAttachment.computeWorldVertices(slot, 0, meshAttachment.worldVerticesLength, worldVertices, 0, 2);
 
 				mesh = null;
 				if (Std.isOfType(meshAttachment.rendererObject, SkeletonMesh)) {
 					mesh = cast(meshAttachment.rendererObject, SkeletonMesh);
+					mesh.texture = meshAttachment.region.texture;
 					indices = meshAttachment.triangles;
 				} else {
-					if (Std.isOfType(meshAttachment.rendererObject, Image)) {
-						meshAttachment.rendererObject = mesh = new SkeletonMesh(cast(meshAttachment.rendererObject, Image).texture);
-					} else if (Std.isOfType(meshAttachment.rendererObject, AtlasRegion)) {
-						meshAttachment.rendererObject = mesh = new SkeletonMesh(cast(cast(meshAttachment.rendererObject, AtlasRegion).rendererObject, Image)
-							.texture);
-					}
+					mesh = meshAttachment.rendererObject = new SkeletonMesh(cast(meshAttachment.region.texture, Texture));
 
 					indexData = mesh.getIndexData();
 					indices = meshAttachment.triangles;
@@ -189,39 +209,12 @@ class SkeletonSprite extends DisplayObject {
 
 			vertexData = mesh.getVertexData();
 			vertexData.numVertices = verticesCount;
-			if (vertexEffect != null) {
-				tempLight.r = ((rgb >> 16) & 0xff) / 255.0;
-				tempLight.g = ((rgb >> 8) & 0xff) / 255.0;
-				tempLight.b = (rgb & 0xff) / 255.0;
-				tempLight.a = a;
-				tempDark.r = ((dark >> 16) & 0xff) / 255.0;
-				tempDark.g = ((dark >> 8) & 0xff) / 255.0;
-				tempDark.b = (dark & 0xff) / 255.0;
-				tempDark.a = 0;
-				var ii:Int = 0;
-				for (i in 0...verticesCount) {
-					tempVertex.x = worldVertices[ii];
-					tempVertex.y = worldVertices[ii + 1];
-					tempVertex.u = uvs[ii];
-					tempVertex.v = uvs[ii + 1];
-					tempVertex.light.setFromColor(tempLight);
-					tempVertex.dark.setFromColor(tempDark);
-					vertexEffect.transform(tempVertex);
-					vertexData.colorize("color",
-						Color.rgb(Std.int(tempVertex.light.r * 255), Std.int(tempVertex.light.g * 255), Std.int(tempVertex.light.b * 255)),
-						tempVertex.light.a, i, 1);
-					mesh.setVertexPosition(i, tempVertex.x, tempVertex.y);
-					mesh.setTexCoords(i, tempVertex.u, tempVertex.v);
-					ii += 2;
-				}
-			} else {
-				vertexData.colorize("color", rgb, a);
-				var ii:Int = 0;
-				for (i in 0...verticesCount) {
-					mesh.setVertexPosition(i, worldVertices[ii], worldVertices[ii + 1]);
-					mesh.setTexCoords(i, uvs[ii], uvs[ii + 1]);
-					ii += 2;
-				}
+			vertexData.colorize("color", rgb, a);
+			var ii:Int = 0;
+			for (i in 0...verticesCount) {
+				mesh.setVertexPosition(i, worldVertices[ii], worldVertices[ii + 1]);
+				mesh.setTexCoords(i, uvs[ii], uvs[ii + 1]);
+				ii += 2;
 			}
 
 			if (indexData.numIndices > 0 && vertexData.numVertices > 0) {
@@ -233,9 +226,6 @@ class SkeletonSprite extends DisplayObject {
 		}
 		painter.state.blendMode = originalBlendMode;
 		clipper.clipEnd();
-
-		if (vertexEffect != null)
-			vertexEffect.end();
 	}
 
 	override public function hitTest(localPoint:Point):DisplayObject {
@@ -246,8 +236,8 @@ class SkeletonSprite extends DisplayObject {
 		var minY:Float = Max.MAX_VALUE;
 		var maxX:Float = -Max.MAX_VALUE;
 		var maxY:Float = -Max.MAX_VALUE;
-		var slots:Vector<Slot> = skeleton.slots;
-		var worldVertices:Vector<Float> = _tempVertices;
+		var slots:Array<Slot> = skeleton.slots;
+		var worldVertices:Array<Float> = _tempVertices;
 		var empty:Bool = true;
 		for (i in 0...slots.length) {
 			var slot:Slot = slots[i];
@@ -258,12 +248,12 @@ class SkeletonSprite extends DisplayObject {
 			if (Std.isOfType(attachment, RegionAttachment)) {
 				var region:RegionAttachment = cast(slot.attachment, RegionAttachment);
 				verticesLength = 8;
-				region.computeWorldVertices(slot.bone, worldVertices, 0, 2);
+				region.computeWorldVertices(slot, worldVertices, 0, 2);
 			} else if (Std.isOfType(attachment, MeshAttachment)) {
 				var mesh:MeshAttachment = cast(attachment, MeshAttachment);
 				verticesLength = mesh.worldVerticesLength;
 				if (worldVertices.length < verticesLength)
-					worldVertices.length = verticesLength;
+					worldVertices.resize(verticesLength);
 				mesh.computeWorldVertices(slot, 0, verticesLength, worldVertices, 0, 2);
 			} else {
 				continue;
@@ -330,6 +320,12 @@ class SkeletonSprite extends DisplayObject {
 		return _skeleton;
 	}
 
+	public var state(get, never):AnimationState;
+
+	private function get_state():AnimationState {
+		return _state;
+	}
+
 	public var smoothing(get, set):String;
 
 	private function get_smoothing():String {
@@ -339,5 +335,12 @@ class SkeletonSprite extends DisplayObject {
 	private function set_smoothing(smoothing:String):String {
 		_smoothing = smoothing;
 		return _smoothing;
+	}
+
+	public function advanceTime(time:Float):Void {
+		_state.update(time);
+		_state.apply(skeleton);
+		skeleton.updateWorldTransform();
+		this.setRequiresRedraw();
 	}
 }

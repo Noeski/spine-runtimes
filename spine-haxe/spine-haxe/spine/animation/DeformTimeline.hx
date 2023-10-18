@@ -1,6 +1,34 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine.animation;
 
-import openfl.Vector;
 import spine.animation.Timeline;
 import spine.attachments.Attachment;
 import spine.attachments.VertexAttachment;
@@ -15,13 +43,14 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 	public var attachment:VertexAttachment;
 
 	/** The vertices for each key frame. */
-	public var vertices:Vector<Vector<Float>>;
+	public var vertices:Array<Array<Float>>;
 
 	public function new(frameCount:Int, bezierCount:Int, slotIndex:Int, attachment:VertexAttachment) {
-		super(frameCount, bezierCount, Vector.ofArray([Property.deform + "|" + slotIndex + "|" + attachment.id]));
+		super(frameCount, bezierCount, [Property.deform + "|" + slotIndex + "|" + attachment.id]);
 		this.slotIndex = slotIndex;
 		this.attachment = attachment;
-		vertices = new Vector<Vector<Float>>(frameCount, true);
+		vertices = new Array<Array<Float>>();
+		vertices.resize(frameCount);
 	}
 
 	public override function getFrameCount():Int {
@@ -34,7 +63,7 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 
 	/** Sets the time in seconds and the vertices for the specified key frame.
 	 * @param vertices Vertex positions for an unweighted VertexAttachment, or deform offsets if it has weights. */
-	public function setFrame(frame:Int, time:Float, verticesOrDeform:Vector<Float>):Void {
+	public function setFrame(frame:Int, time:Float, verticesOrDeform:Array<Float>):Void {
 		frames[frame] = time;
 		vertices[frame] = verticesOrDeform;
 	}
@@ -100,34 +129,35 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 		return y + (1 - y) * (time - x) / (frames[frame + getFrameEntries()] - x);
 	}
 
-	public override function apply(skeleton:Skeleton, lastTime:Float, time:Float, events:Vector<Event>, alpha:Float, blend:MixBlend,
+	public override function apply(skeleton:Skeleton, lastTime:Float, time:Float, events:Array<Event>, alpha:Float, blend:MixBlend,
 			direction:MixDirection):Void {
 		var slot:Slot = skeleton.slots[slotIndex];
 		if (!slot.bone.active)
 			return;
 		var slotAttachment:Attachment = slot.attachment;
-
-		if (!Std.isOfType(slotAttachment, VertexAttachment) || cast(slotAttachment, VertexAttachment).deformAttachment != attachment)
+		if (slotAttachment == null)
 			return;
-		var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
+		if (!Std.isOfType(slotAttachment, VertexAttachment) || cast(slotAttachment, VertexAttachment).timelineAttachment != attachment)
+			return;
 
-		var deform:Vector<Float> = slot.deform;
+		var deform:Array<Float> = slot.deform;
 		if (deform.length == 0)
 			blend = MixBlend.setup;
 
 		var vertexCount:Int = vertices[0].length;
-		var i:Int, setupVertices:Vector<Float>;
+		var i:Int, setupVertices:Array<Float>;
 
 		if (time < frames[0]) {
 			switch (blend) {
 				case MixBlend.setup:
-					deform.length = 0;
+					deform.resize(0);
 				case MixBlend.first:
 					if (alpha == 1) {
-						deform.length = 0;
+						deform.resize(0);
 						return;
 					}
-					deform.length = vertexCount;
+					deform.resize(vertexCount);
+					var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
 					if (vertexAttachment.bones == null) {
 						// Unweighted vertex positions.
 						setupVertices = vertexAttachment.vertices;
@@ -145,13 +175,14 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 			return;
 		}
 
-		deform.length = vertexCount;
+		deform.resize(vertexCount);
 		var setup:Float;
 		if (time >= frames[frames.length - 1]) // Time is after last frame.
 		{
-			var lastVertices:Vector<Float> = vertices[frames.length - 1];
+			var lastVertices:Array<Float> = vertices[frames.length - 1];
 			if (alpha == 1) {
 				if (blend == MixBlend.add) {
+					var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
 					if (vertexAttachment.bones == null) {
 						// Unweighted vertex positions, with alpha.
 						setupVertices = vertexAttachment.vertices;
@@ -172,6 +203,7 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 			} else {
 				switch (blend) {
 					case MixBlend.setup:
+						var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
 						if (vertexAttachment.bones == null) {
 							// Unweighted vertex positions, with alpha.
 							setupVertices = vertexAttachment.vertices;
@@ -190,6 +222,7 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 							deform[i] += (lastVertices[i] - deform[i]) * alpha;
 						}
 					case MixBlend.add:
+						var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
 						if (vertexAttachment.bones == null) {
 							// Unweighted vertex positions, with alpha.
 							setupVertices = vertexAttachment.vertices;
@@ -210,11 +243,12 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 		// Interpolate between the previous frame and the current frame.
 		var frame:Int = Timeline.search1(frames, time);
 		var percent:Float = getCurvePercent(time, frame);
-		var prevVertices:Vector<Float> = vertices[frame], prev:Float;
-		var nextVertices:Vector<Float> = vertices[frame + 1];
+		var prevVertices:Array<Float> = vertices[frame], prev:Float;
+		var nextVertices:Array<Float> = vertices[frame + 1];
 
 		if (alpha == 1) {
 			if (blend == MixBlend.add) {
+				var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
 				if (vertexAttachment.bones == null) {
 					// Unweighted vertex positions, with alpha.
 					setupVertices = vertexAttachment.vertices;
@@ -238,6 +272,7 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 		} else {
 			switch (blend) {
 				case MixBlend.setup:
+					var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
 					if (vertexAttachment.bones == null) {
 						// Unweighted vertex positions, with alpha.
 						setupVertices = vertexAttachment.vertices;
@@ -259,6 +294,7 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 						deform[i] += (prev + (nextVertices[i] - prev) * percent - deform[i]) * alpha;
 					}
 				case MixBlend.add:
+					var vertexAttachment:VertexAttachment = cast(slotAttachment, VertexAttachment);
 					if (vertexAttachment.bones == null) {
 						// Unweighted vertex positions, with alpha.
 						setupVertices = vertexAttachment.vertices;

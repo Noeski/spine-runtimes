@@ -1,82 +1,63 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine.starling;
 
-import openfl.display.Bitmap;
-import openfl.display.BitmapData;
-import openfl.errors.ArgumentError;
-import openfl.utils.Object;
-import spine.atlas.AtlasPage;
-import spine.atlas.AtlasRegion;
-import spine.atlas.TextureLoader;
-import starling.display.Image;
 import starling.textures.Texture;
+import spine.atlas.TextureAtlasRegion;
+import spine.atlas.TextureAtlasPage;
+import spine.atlas.TextureLoader;
 
 class StarlingTextureLoader implements TextureLoader {
-	public var bitmapDatasOrTextures:Object = {};
-	public var singleBitmapDataOrTexture:Dynamic;
+	private var basePath:String;
 
-	/** @param bitmaps A Bitmap or BitmapData or Texture for an atlas that has only one page, or for a multi page atlas an object where the
-	 * key is the image path and the value is the Bitmap or BitmapData or Texture. */
-	public function new(bitmapsOrTextures:Dynamic) {
-		if (Std.isOfType(bitmapsOrTextures, BitmapData)) {
-			singleBitmapDataOrTexture = cast(bitmapsOrTextures, BitmapData);
-			return;
-		}
-		if (Std.isOfType(bitmapsOrTextures, Bitmap)) {
-			singleBitmapDataOrTexture = cast(bitmapsOrTextures, Bitmap).bitmapData;
-			return;
-		}
-		if (Std.isOfType(bitmapsOrTextures, Texture)) {
-			singleBitmapDataOrTexture = cast(bitmapsOrTextures, Texture);
-			return;
-		}
-
-		for (path in Reflect.fields(bitmapsOrTextures)) {
-			var object:Dynamic = Reflect.getProperty(bitmapsOrTextures, path);
-			var bitmapDataOrTexture:Dynamic;
-			if (Std.isOfType(object, BitmapData)) {
-				bitmapDataOrTexture = cast(object, BitmapData);
-			} else if (Std.isOfType(object, Bitmap)) {
-				bitmapDataOrTexture = cast(object, Bitmap).bitmapData;
-			} else if (Std.isOfType(object, Texture)) {
-				bitmapDataOrTexture = cast(object, Texture);
-			} else {
-				throw new ArgumentError("Object for path \"" + path + "\" must be a Bitmap, BitmapData or Texture: " + object);
-			}
-			bitmapDatasOrTextures[path] = bitmapDataOrTexture;
+	public function new(atlasPath:String) {
+		basePath = "";
+		var slashIndex = atlasPath.lastIndexOf("/");
+		if (slashIndex != -1) {
+			basePath = atlasPath.substring(0, slashIndex);
 		}
 	}
 
-	public function loadPage(page:AtlasPage, path:String):Void {
-		var bitmapDataOrTexture:Dynamic = singleBitmapDataOrTexture != null ? singleBitmapDataOrTexture : bitmapDatasOrTextures[path];
-		if (bitmapDataOrTexture == null) {
-			throw new ArgumentError("BitmapData/Texture not found with name: " + path);
+	public function loadPage(page:TextureAtlasPage, path:String) {
+		var bitmapData = openfl.utils.Assets.getBitmapData(basePath + "/" + path);
+		if (bitmapData == null) {
+			throw new SpineException("Could not load atlas page texture " + basePath + "/" + path);
 		}
-		if (Std.isOfType(bitmapDataOrTexture, BitmapData)) {
-			var bitmapData:BitmapData = cast(bitmapDataOrTexture, BitmapData);
-			page.rendererObject = Texture.fromBitmapData(bitmapData);
-		} else {
-			var texture:Texture = cast(bitmapDataOrTexture, Texture);
-			page.rendererObject = texture;
-		}
+		page.texture = Texture.fromBitmapData(bitmapData);
 	}
 
-	public function loadRegion(region:AtlasRegion):Void {
-		var image:Image = new Image(cast(region.page.rendererObject, Texture));
-		if (region.degrees == 90) {
-			image.setTexCoords(0, region.u, region.v2);
-			image.setTexCoords(1, region.u, region.v);
-			image.setTexCoords(2, region.u2, region.v2);
-			image.setTexCoords(3, region.u2, region.v);
-		} else {
-			image.setTexCoords(0, region.u, region.v);
-			image.setTexCoords(1, region.u2, region.v);
-			image.setTexCoords(2, region.u, region.v2);
-			image.setTexCoords(3, region.u2, region.v2);
-		}
-		region.rendererObject = image;
+	public function loadRegion(region:TextureAtlasRegion):Void {
+		region.texture = region.page.texture;
 	}
 
-	public function unloadPage(page:AtlasPage):Void {
-		cast(page.rendererObject, Texture).dispose();
+	public function unloadPage(page:TextureAtlasPage):Void {
+		cast(page.texture, Texture).dispose();
 	}
 }

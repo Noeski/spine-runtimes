@@ -1,8 +1,36 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine;
 
-import openfl.errors.ArgumentError;
-import openfl.utils.Dictionary;
-import openfl.Vector;
+import lime.math.Rectangle;
+import haxe.ds.StringMap;
 import spine.attachments.Attachment;
 import spine.attachments.MeshAttachment;
 import spine.attachments.PathAttachment;
@@ -11,18 +39,17 @@ import spine.attachments.RegionAttachment;
 class Skeleton {
 	private var _data:SkeletonData;
 
-	public var bones:Vector<Bone>;
-	public var slots:Vector<Slot>;
-	public var drawOrder:Vector<Slot>;
-	public var ikConstraints:Vector<IkConstraint>;
-	public var transformConstraints:Vector<TransformConstraint>;
-	public var pathConstraints:Vector<PathConstraint>;
+	public var bones:Array<Bone>;
+	public var slots:Array<Slot>;
+	public var drawOrder:Array<Slot>;
+	public var ikConstraints:Array<IkConstraint>;
+	public var transformConstraints:Array<TransformConstraint>;
+	public var pathConstraints:Array<PathConstraint>;
 
-	private var _updateCache:Vector<Updatable> = new Vector<Updatable>();
+	private var _updateCache:Array<Updatable> = new Array<Updatable>();
 	private var _skin:Skin;
 
 	public var color:Color = new Color(1, 1, 1, 1);
-	public var time:Float = 0;
 	public var scaleX:Float = 1;
 	public var scaleY:Float = 1;
 	public var x:Float = 0;
@@ -30,11 +57,11 @@ class Skeleton {
 
 	public function new(data:SkeletonData) {
 		if (data == null) {
-			throw new ArgumentError("data cannot be null.");
+			throw new SpineException("data cannot be null.");
 		}
 		_data = data;
 
-		bones = new Vector<Bone>();
+		bones = new Array<Bone>();
 		for (boneData in data.bones) {
 			var bone:Bone;
 			if (boneData.parent == null) {
@@ -47,8 +74,8 @@ class Skeleton {
 			bones.push(bone);
 		}
 
-		slots = new Vector<Slot>();
-		drawOrder = new Vector<Slot>();
+		slots = new Array<Slot>();
+		drawOrder = new Array<Slot>();
 		for (slotData in data.slots) {
 			var bone = bones[slotData.boneData.index];
 			var slot:Slot = new Slot(slotData, bone);
@@ -56,17 +83,17 @@ class Skeleton {
 			drawOrder.push(slot);
 		}
 
-		ikConstraints = new Vector<IkConstraint>();
+		ikConstraints = new Array<IkConstraint>();
 		for (ikConstraintData in data.ikConstraints) {
 			ikConstraints.push(new IkConstraint(ikConstraintData, this));
 		}
 
-		transformConstraints = new Vector<TransformConstraint>();
+		transformConstraints = new Array<TransformConstraint>();
 		for (transformConstraintData in data.transformConstraints) {
 			transformConstraints.push(new TransformConstraint(transformConstraintData, this));
 		}
 
-		pathConstraints = new Vector<PathConstraint>();
+		pathConstraints = new Array<PathConstraint>();
 		for (pathConstraintData in data.pathConstraints) {
 			pathConstraints.push(new PathConstraint(pathConstraintData, this));
 		}
@@ -77,7 +104,7 @@ class Skeleton {
 	/** Caches information about bones and constraints. Must be called if bones, constraints, or weighted path attachments are
 	 * added or removed. */
 	public function updateCache():Void {
-		_updateCache.length = 0;
+		_updateCache.resize(0);
 
 		for (bone in bones) {
 			bone.sorted = bone.data.skinRequired;
@@ -85,7 +112,7 @@ class Skeleton {
 		}
 
 		if (skin != null) {
-			var skinBones:Vector<BoneData> = skin.bones;
+			var skinBones:Array<BoneData> = skin.bones;
 			for (i in 0...skin.bones.length) {
 				var bone:Bone = bones[skinBones[i].index];
 				do {
@@ -136,7 +163,7 @@ class Skeleton {
 		}
 	}
 
-	private static function contains(list:Vector<ConstraintData>, element:ConstraintData):Bool {
+	private static function contains(list:Array<ConstraintData>, element:ConstraintData):Bool {
 		return list.indexOf(element) != -1;
 	}
 
@@ -149,7 +176,7 @@ class Skeleton {
 		var target:Bone = constraint.target;
 		sortBone(target);
 
-		var constrained:Vector<Bone> = constraint.bones;
+		var constrained:Array<Bone> = constraint.bones;
 		var parent:Bone = constrained[0];
 		sortBone(parent);
 
@@ -194,7 +221,7 @@ class Skeleton {
 		if (Std.isOfType(attachment, PathAttachment))
 			sortPathConstraintAttachment2(attachment, slotBone);
 
-		var constrainedBones:Vector<Bone> = constraint.bones;
+		var constrainedBones:Array<Bone> = constraint.bones;
 		for (bone in constrainedBones) {
 			sortBone(bone);
 		}
@@ -217,7 +244,7 @@ class Skeleton {
 
 		sortBone(constraint.target);
 
-		var constrainedBones:Vector<Bone> = constraint.bones;
+		var constrainedBones:Array<Bone> = constraint.bones;
 		if (constraint.data.local) {
 			for (bone in constrainedBones) {
 				sortBone(bone.parent);
@@ -239,10 +266,10 @@ class Skeleton {
 	}
 
 	private function sortPathConstraintAttachment(skin:Skin, slotIndex:Int, slotBone:Bone):Void {
-		var dict:Dictionary<String, Attachment> = skin.attachments[slotIndex];
+		var dict:StringMap<Attachment> = skin.attachments[slotIndex];
 		if (dict != null) {
-			for (attachment in dict.each()) {
-				sortPathConstraintAttachment2(attachment, slotBone);
+			for (attachment in dict.keyValueIterator()) {
+				sortPathConstraintAttachment2(attachment.value, slotBone);
 			}
 		}
 	}
@@ -251,7 +278,7 @@ class Skeleton {
 		var pathAttachment:PathAttachment = cast(attachment, PathAttachment);
 		if (pathAttachment == null)
 			return;
-		var pathBones:Vector<Int> = pathAttachment.bones;
+		var pathBones:Array<Int> = pathAttachment.bones;
 		if (pathBones == null) {
 			sortBone(slotBone);
 		} else {
@@ -277,7 +304,7 @@ class Skeleton {
 		_updateCache.push(bone);
 	}
 
-	private function sortReset(bones:Vector<Bone>):Void {
+	private function sortReset(bones:Array<Bone>):Void {
 		for (bone in bones) {
 			if (!bone.active)
 				continue;
@@ -383,9 +410,9 @@ class Skeleton {
 		return _data;
 	}
 
-	public var getUpdateCache(get, never):Vector<Updatable>;
+	public var getUpdateCache(get, never):Array<Updatable>;
 
-	private function get_getUpdateCache():Vector<Updatable> {
+	private function get_getUpdateCache():Array<Updatable> {
 		return _updateCache;
 	}
 
@@ -400,7 +427,7 @@ class Skeleton {
 	/** @return May be null. */
 	public function findBone(boneName:String):Bone {
 		if (boneName == null) {
-			throw new ArgumentError("boneName cannot be null.");
+			throw new SpineException("boneName cannot be null.");
 		}
 		for (bone in bones) {
 			if (bone.data.name == boneName)
@@ -412,7 +439,7 @@ class Skeleton {
 	/** @return -1 if the bone was not found. */
 	public function findBoneIndex(boneName:String):Int {
 		if (boneName == null) {
-			throw new ArgumentError("boneName cannot be null.");
+			throw new SpineException("boneName cannot be null.");
 		}
 		var i:Int = 0;
 		for (bone in bones) {
@@ -426,7 +453,7 @@ class Skeleton {
 	/** @return May be null. */
 	public function findSlot(slotName:String):Slot {
 		if (slotName == null) {
-			throw new ArgumentError("slotName cannot be null.");
+			throw new SpineException("slotName cannot be null.");
 		}
 		for (slot in slots) {
 			if (slot.data.name == slotName)
@@ -440,7 +467,7 @@ class Skeleton {
 	private function set_skinName(skinName:String):String {
 		var skin:Skin = data.findSkin(skinName);
 		if (skin == null)
-			throw new ArgumentError("Skin not found: " + skinName);
+			throw new SpineException("Skin not found: " + skinName);
 		this.skin = skin;
 		return skinName;
 	}
@@ -492,7 +519,7 @@ class Skeleton {
 	/** @return May be null. */
 	public function getAttachmentForSlotIndex(slotIndex:Int, attachmentName:String):Attachment {
 		if (attachmentName == null)
-			throw new ArgumentError("attachmentName cannot be null.");
+			throw new SpineException("attachmentName cannot be null.");
 		if (skin != null) {
 			var attachment:Attachment = skin.getAttachment(slotIndex, attachmentName);
 			if (attachment != null)
@@ -506,7 +533,7 @@ class Skeleton {
 	/** @param attachmentName May be null. */
 	public function setAttachment(slotName:String, attachmentName:String):Void {
 		if (slotName == null)
-			throw new ArgumentError("slotName cannot be null.");
+			throw new SpineException("slotName cannot be null.");
 		var i:Int = 0;
 		for (slot in slots) {
 			if (slot.data.name == slotName) {
@@ -514,7 +541,7 @@ class Skeleton {
 				if (attachmentName != null) {
 					attachment = getAttachmentForSlotIndex(i, attachmentName);
 					if (attachment == null) {
-						throw new ArgumentError("Attachment not found: " + attachmentName + ", for slot: " + slotName);
+						throw new SpineException("Attachment not found: " + attachmentName + ", for slot: " + slotName);
 					}
 				}
 				slot.attachment = attachment;
@@ -522,13 +549,13 @@ class Skeleton {
 			}
 			i++;
 		}
-		throw new ArgumentError("Slot not found: " + slotName);
+		throw new SpineException("Slot not found: " + slotName);
 	}
 
 	/** @return May be null. */
 	public function findIkConstraint(constraintName:String):IkConstraint {
 		if (constraintName == null)
-			throw new ArgumentError("constraintName cannot be null.");
+			throw new SpineException("constraintName cannot be null.");
 		for (ikConstraint in ikConstraints) {
 			if (ikConstraint.data.name == constraintName)
 				return ikConstraint;
@@ -539,7 +566,7 @@ class Skeleton {
 	/** @return May be null. */
 	public function findTransformConstraint(constraintName:String):TransformConstraint {
 		if (constraintName == null)
-			throw new ArgumentError("constraintName cannot be null.");
+			throw new SpineException("constraintName cannot be null.");
 		for (transformConstraint in transformConstraints) {
 			if (transformConstraint.data.name == constraintName)
 				return transformConstraint;
@@ -550,7 +577,7 @@ class Skeleton {
 	/** @return May be null. */
 	public function findPathConstraint(constraintName:String):PathConstraint {
 		if (constraintName == null)
-			throw new ArgumentError("constraintName cannot be null.");
+			throw new SpineException("constraintName cannot be null.");
 		for (pathConstraint in pathConstraints) {
 			if (pathConstraint.data.name == constraintName)
 				return pathConstraint;
@@ -558,37 +585,32 @@ class Skeleton {
 		return null;
 	}
 
-	public function update(delta:Float):Void {
-		time += delta;
-	}
-
 	public function toString():String {
 		return _data.name != null ? _data.name : "Skeleton?";
 	}
 
-	public function getBounds(offset:Vector<Float>, size:Vector<Float>, temp:Vector<Float>):Void {
-		if (offset == null)
-			throw new ArgumentError("offset cannot be null.");
-		if (size == null)
-			throw new ArgumentError("size cannot be null.");
+	private var _tempVertices = new Array<Float>();
+	private var _bounds = new Rectangle();
+
+	public function getBounds():Rectangle {
 		var minX:Float = Math.POSITIVE_INFINITY;
 		var minY:Float = Math.POSITIVE_INFINITY;
 		var maxX:Float = Math.NEGATIVE_INFINITY;
 		var maxY:Float = Math.NEGATIVE_INFINITY;
 		for (slot in drawOrder) {
 			var verticesLength:Int = 0;
-			var vertices:Vector<Float> = null;
+			var vertices:Array<Float> = null;
 			var attachment:Attachment = slot.attachment;
 			if (Std.isOfType(attachment, RegionAttachment)) {
 				verticesLength = 8;
-				temp.length = verticesLength;
-				vertices = temp;
-				cast(attachment, RegionAttachment).computeWorldVertices(slot.bone, vertices, 0, 2);
+				_tempVertices.resize(verticesLength);
+				vertices = _tempVertices;
+				cast(attachment, RegionAttachment).computeWorldVertices(slot, vertices, 0, 2);
 			} else if (Std.isOfType(attachment, MeshAttachment)) {
 				var mesh:MeshAttachment = cast(attachment, MeshAttachment);
 				verticesLength = mesh.worldVerticesLength;
-				temp.length = verticesLength;
-				vertices = temp;
+				_tempVertices.resize(verticesLength);
+				vertices = _tempVertices;
 				mesh.computeWorldVertices(slot, 0, verticesLength, vertices, 0, 2);
 			}
 			if (vertices != null) {
@@ -604,9 +626,10 @@ class Skeleton {
 				}
 			}
 		}
-		offset[0] = minX;
-		offset[1] = minY;
-		size[0] = maxX - minX;
-		size[1] = maxY - minY;
+		_bounds.x = minX;
+		_bounds.y = minY;
+		_bounds.width = maxX - minX;
+		_bounds.height = maxY - minY;
+		return _bounds;
 	}
 }

@@ -1,6 +1,34 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine.attachments;
 
-import openfl.Vector;
 import spine.Bone;
 import spine.Skeleton;
 import spine.Slot;
@@ -8,15 +36,15 @@ import spine.Slot;
 class VertexAttachment extends Attachment {
 	private static var nextID:Int = 0;
 
-	public var bones:Vector<Int>;
-	public var vertices:Vector<Float>;
+	public var bones:Array<Int>;
+	public var vertices = new Array<Float>();
 	public var worldVerticesLength:Int = 0;
 	public var id:Int = nextID++;
-	public var deformAttachment:VertexAttachment;
+	public var timelineAttachment:VertexAttachment;
 
 	public function new(name:String) {
 		super(name);
-		deformAttachment = this;
+		timelineAttachment = this;
 	}
 
 	/** Transforms the attachment's local {@link #vertices} to world coordinates. If the slot's {@link Slot#deform} is
@@ -30,10 +58,10 @@ class VertexAttachment extends Attachment {
 	 *           `stride` / 2.
 	 * @param offset The `worldVertices` index to begin writing values.
 	 * @param stride The number of `worldVertices` entries between the value pairs written. */
-	public function computeWorldVertices(slot:Slot, start:Int, count:Int, worldVertices:Vector<Float>, offset:Int, stride:Int):Void {
+	public function computeWorldVertices(slot:Slot, start:Int, count:Int, worldVertices:Array<Float>, offset:Int, stride:Int):Void {
 		count = offset + (count >> 1) * stride;
 		var skeleton:Skeleton = slot.skeleton;
-		var deform:Vector<Float> = slot.deform;
+		var deform:Array<Float> = slot.deform;
 
 		var v:Int, w:Int, n:Int, i:Int, skip:Int, b:Int, f:Int;
 		var vx:Float, vy:Float;
@@ -71,7 +99,7 @@ class VertexAttachment extends Attachment {
 			skip += n;
 			i += 2;
 		}
-		var skeletonBones:Vector<Bone> = skeleton.bones;
+		var skeletonBones:Array<Bone> = skeleton.bones;
 		if (deform.length == 0) {
 			w = offset;
 			b = skip * 3;
@@ -123,18 +151,16 @@ class VertexAttachment extends Attachment {
 
 	public function copyTo(attachment:VertexAttachment):Void {
 		if (bones != null) {
-			attachment.bones = bones.concat();
+			attachment.bones = bones.copy();
 		} else {
 			attachment.bones = null;
 		}
 
 		if (this.vertices != null) {
-			attachment.vertices = vertices.concat();
-		} else {
-			attachment.vertices = null;
+			attachment.vertices = vertices.copy();
 		}
 
 		attachment.worldVerticesLength = worldVerticesLength;
-		attachment.deformAttachment = deformAttachment;
+		attachment.timelineAttachment = timelineAttachment;
 	}
 }

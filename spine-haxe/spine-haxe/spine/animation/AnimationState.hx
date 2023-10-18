@@ -1,9 +1,35 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine.animation;
 
-import starling.utils.Max;
-import openfl.errors.ArgumentError;
-import openfl.utils.Dictionary;
-import openfl.Vector;
+import haxe.ds.StringMap;
 import spine.animation.Listeners.EventListeners;
 import spine.Event;
 import spine.Pool;
@@ -18,12 +44,12 @@ class AnimationState {
 	public static inline var SETUP:Int = 1;
 	public static inline var CURRENT:Int = 2;
 
-	private static var emptyAnimation:Animation = new Animation("<empty>", new Vector<Timeline>(), 0);
+	private static var emptyAnimation:Animation = new Animation("<empty>", new Array<Timeline>(), 0);
 
 	public var data:AnimationStateData;
-	public var tracks:Vector<TrackEntry> = new Vector<TrackEntry>();
+	public var tracks:Array<TrackEntry> = new Array<TrackEntry>();
 
-	private var events:Vector<Event> = new Vector<Event>();
+	private var events:Array<Event> = new Array<Event>();
 
 	public var onStart:Listeners = new Listeners();
 	public var onInterrupt:Listeners = new Listeners();
@@ -43,7 +69,7 @@ class AnimationState {
 
 	public function new(data:AnimationStateData) {
 		if (data == null)
-			throw new ArgumentError("data can not be null");
+			throw new SpineException("data can not be null");
 		this.data = data;
 		this.queue = new EventQueue(this);
 		this.trackEntryPool = new Pool(function():Dynamic {
@@ -142,7 +168,7 @@ class AnimationState {
 
 	public function apply(skeleton:Skeleton):Bool {
 		if (skeleton == null)
-			throw new ArgumentError("skeleton cannot be null.");
+			throw new SpineException("skeleton cannot be null.");
 		if (animationsChanged)
 			_animationsChanged();
 		var applied:Bool = false;
@@ -166,12 +192,12 @@ class AnimationState {
 			var animationLast:Float = current.animationLast,
 				animationTime:Float = current.getAnimationTime(),
 				applyTime:Float = animationTime;
-			var applyEvents:Vector<Event> = events;
+			var applyEvents:Array<Event> = events;
 			if (current.reverse) {
 				applyTime = current.animation.duration - applyTime;
 				applyEvents = null;
 			}
-			var timelines:Vector<Timeline> = current.animation.timelines;
+			var timelines:Array<Timeline> = current.animation.timelines;
 			var timelineCount:Int = timelines.length;
 			var timeline:Timeline;
 			if ((i == 0 && mix == 1) || blend == MixBlend.add) {
@@ -179,20 +205,28 @@ class AnimationState {
 					timeline.apply(skeleton, animationLast, applyTime, applyEvents, mix, blend, MixDirection.mixIn);
 				}
 			} else {
-				var timelineMode:Vector<Int> = current.timelineMode;
+				var timelineMode:Array<Int> = current.timelineMode;
 
-				var firstFrame:Bool = current.timelinesRotation.length == 0;
+				var shortestRotation = current.shortestRotation;
+				var firstFrame:Bool = !shortestRotation && current.timelinesRotation.length != timelineCount << 1;
 				if (firstFrame)
-					current.timelinesRotation.length = timelineCount << 1;
+					current.timelinesRotation.resize(timelineCount << 1);
 
 				for (ii in 0...timelineCount) {
 					var timeline:Timeline = timelines[ii];
 					var timelineBlend:MixBlend = timelineMode[ii] == SUBSEQUENT ? blend : MixBlend.setup;
-					timeline.apply(skeleton, animationLast, applyTime, applyEvents, mix, timelineBlend, MixDirection.mixIn);
+					if (!shortestRotation && Std.isOfType(timeline, RotateTimeline)) {
+						this.applyRotateTimeline(cast(timeline, RotateTimeline), skeleton, applyTime, mix, timelineBlend, current.timelinesRotation, ii << 1,
+							firstFrame);
+					} else if (Std.isOfType(timeline, AttachmentTimeline)) {
+						this.applyAttachmentTimeline(cast(timeline, AttachmentTimeline), skeleton, applyTime, blend, true);
+					} else {
+						timeline.apply(skeleton, animationLast, applyTime, applyEvents, mix, timelineBlend, MixDirection.mixIn);
+					}
 				}
 			}
 			queueEvents(current, animationTime);
-			events.length = 0;
+			events.resize(0);
 			current.nextAnimationLast = animationTime;
 			current.nextTrackLast = current.trackTime;
 		}
@@ -235,13 +269,13 @@ class AnimationState {
 		var attachments:Bool = mix < from.attachmentThreshold,
 			drawOrder:Bool = mix < from.drawOrderThreshold;
 		var timelineCount:Int = from.animation.timelines.length;
-		var timelines:Vector<Timeline> = from.animation.timelines;
+		var timelines:Array<Timeline> = from.animation.timelines;
 		var alphaHold:Float = from.alpha * to.interruptAlpha,
 			alphaMix:Float = alphaHold * (1 - mix);
 		var animationLast:Float = from.animationLast,
 			animationTime:Float = from.getAnimationTime(),
 			applyTime:Float = animationTime;
-		var applyEvents:Vector<Event> = null;
+		var applyEvents:Array<Event> = null;
 		if (from.reverse) {
 			applyTime = from.animation.duration - applyTime;
 		} else if (mix < from.eventThreshold) {
@@ -253,13 +287,14 @@ class AnimationState {
 				timeline.apply(skeleton, animationLast, applyTime, applyEvents, alphaMix, blend, MixDirection.mixOut);
 			}
 		} else {
-			var timelineMode:Vector<Int> = from.timelineMode;
-			var timelineHoldMix:Vector<TrackEntry> = from.timelineHoldMix;
+			var timelineMode:Array<Int> = from.timelineMode;
+			var timelineHoldMix:Array<TrackEntry> = from.timelineHoldMix;
+			var shortestRotation = from.shortestRotation;
 
-			var firstFrame:Bool = from.timelinesRotation.length != timelineCount << 1;
+			var firstFrame:Bool = !shortestRotation && from.timelinesRotation.length != timelineCount << 1;
 			if (firstFrame)
-				from.timelinesRotation.length = timelineCount << 1;
-			var timelinesRotation:Vector<Float> = from.timelinesRotation;
+				from.timelinesRotation.resize(timelineCount << 1);
+			var timelinesRotation:Array<Float> = from.timelinesRotation;
 
 			from.totalAlpha = 0;
 			for (i in 0...timelineCount) {
@@ -290,19 +325,102 @@ class AnimationState {
 
 				from.totalAlpha += alpha;
 
-				if (drawOrder && Std.isOfType(timeline, DrawOrderTimeline) && timelineBlend == MixBlend.setup)
-					direction = MixDirection.mixIn;
-				timeline.apply(skeleton, animationLast, applyTime, applyEvents, alpha, timelineBlend, direction);
+				if (!shortestRotation && Std.isOfType(timeline, RotateTimeline)) {
+					applyRotateTimeline(cast(timeline, RotateTimeline), skeleton, applyTime, alpha, timelineBlend, from.timelinesRotation, i << 1, firstFrame);
+				} else if (Std.isOfType(timeline, AttachmentTimeline)) {
+					applyAttachmentTimeline(cast(timeline, AttachmentTimeline), skeleton, applyTime, timelineBlend, attachments);
+				} else {
+					if (drawOrder && Std.isOfType(timeline, DrawOrderTimeline) && timelineBlend == MixBlend.setup)
+						direction = MixDirection.mixIn;
+					timeline.apply(skeleton, animationLast, applyTime, events, alpha, timelineBlend, direction);
+				}
 			}
 		}
 
 		if (to.mixDuration > 0)
 			queueEvents(from, animationTime);
-		events.length = 0;
+		events.resize(0);
 		from.nextAnimationLast = animationTime;
 		from.nextTrackLast = from.trackTime;
 
 		return mix;
+	}
+
+	public function applyAttachmentTimeline(timeline:AttachmentTimeline, skeleton:Skeleton, time:Float, blend:MixBlend, attachments:Bool) {
+		var slot = skeleton.slots[timeline.slotIndex];
+		if (!slot.bone.active)
+			return;
+
+		if (time < timeline.frames[0]) { // Time is before first frame.
+			if (blend == MixBlend.setup || blend == MixBlend.first)
+				this.setAttachment(skeleton, slot, slot.data.attachmentName, attachments);
+		} else
+			this.setAttachment(skeleton, slot, timeline.attachmentNames[Timeline.search1(timeline.frames, time)], attachments);
+
+		// If an attachment wasn't set (ie before the first frame or attachments is false), set the setup attachment later.
+		if (slot.attachmentState <= this.unkeyedState)
+			slot.attachmentState = this.unkeyedState + SETUP;
+	}
+
+	public function applyRotateTimeline(timeline:RotateTimeline, skeleton:Skeleton, time:Float, alpha:Float, blend:MixBlend, timelinesRotation:Array<Float>,
+			i:Int, firstFrame:Bool) {
+		if (firstFrame)
+			timelinesRotation[i] = 0;
+
+		if (alpha == 1) {
+			timeline.apply(skeleton, 0, time, null, 1, blend, MixDirection.mixIn);
+			return;
+		}
+
+		var bone = skeleton.bones[timeline.boneIndex];
+		if (!bone.active)
+			return;
+		var frames = timeline.frames;
+		var r1:Float = 0, r2:Float = 0;
+		if (time < frames[0]) {
+			switch (blend) {
+				case MixBlend.setup:
+					bone.rotation = bone.data.rotation;
+				default:
+					return;
+				case MixBlend.first:
+					r1 = bone.rotation;
+					r2 = bone.data.rotation;
+			}
+		} else {
+			r1 = blend == MixBlend.setup ? bone.data.rotation : bone.rotation;
+			r2 = bone.data.rotation + timeline.getCurveValue(time);
+		}
+
+		// Mix between rotations using the direction of the shortest route on the first frame while detecting crosses.
+		var total:Float = 0, diff:Float = r2 - r1;
+		diff -= (16384.0 - Std.int((16384.499999999996 - diff / 360.0))) * 360.0;
+		if (diff == 0) {
+			total = timelinesRotation[i];
+		} else {
+			var lastTotal:Float = 0, lastDiff:Float = 0;
+			if (firstFrame) {
+				lastTotal = 0;
+				lastDiff = diff;
+			} else {
+				lastTotal = timelinesRotation[i]; // Angle and direction of mix, including loops.
+				lastDiff = timelinesRotation[i + 1]; // Difference between bones.
+			}
+			var current = diff > 0, dir = lastTotal >= 0;
+			// Detect cross at 0 (not 180).
+			if (MathUtils.signum(lastDiff) != MathUtils.signum(diff) && Math.abs(lastDiff) <= 90) {
+				// A cross after a 360 rotation is a loop.
+				if (Math.abs(lastTotal) > 180)
+					lastTotal += 360 * MathUtils.signum(lastTotal);
+				dir = current;
+			}
+			total = diff + lastTotal - lastTotal % 360; // Store loops as part of lastTotal.
+			if (dir != current)
+				total += 360 * MathUtils.signum(lastTotal);
+			timelinesRotation[i] = total;
+		}
+		timelinesRotation[i + 1] = diff;
+		bone.rotation = r1 + total * alpha;
 	}
 
 	private function setAttachment(skeleton:Skeleton, slot:Slot, attachmentName:String, attachments:Bool):Void {
@@ -359,7 +477,7 @@ class AnimationState {
 		for (i in 0...tracks.length) {
 			clearTrack(i);
 		}
-		tracks.length = 0;
+		tracks.resize(0);
 		queue.drainDisabled = oldTrainDisabled;
 		queue.drain();
 	}
@@ -406,7 +524,7 @@ class AnimationState {
 				current.interruptAlpha *= Math.min(1, from.mixTime / from.mixDuration);
 			}
 
-			from.timelinesRotation.length = 0; // Reset rotation for mixing out, in case entry was mixed in.
+			from.timelinesRotation.resize(0); // Reset rotation for mixing out, in case entry was mixed in.
 		}
 
 		queue.start(current);
@@ -415,13 +533,13 @@ class AnimationState {
 	public function setAnimationByName(trackIndex:Int, animationName:String, loop:Bool):TrackEntry {
 		var animation:Animation = data.skeletonData.findAnimation(animationName);
 		if (animation == null)
-			throw new ArgumentError("Animation not found: " + animationName);
+			throw new SpineException("Animation not found: " + animationName);
 		return setAnimation(trackIndex, animation, loop);
 	}
 
 	public function setAnimation(trackIndex:Int, animation:Animation, loop:Bool):TrackEntry {
 		if (animation == null)
-			throw new ArgumentError("animation cannot be null.");
+			throw new SpineException("animation cannot be null.");
 		var interrupt:Bool = true;
 		var current:TrackEntry = expandToIndex(trackIndex);
 		if (current != null) {
@@ -446,13 +564,13 @@ class AnimationState {
 	public function addAnimationByName(trackIndex:Int, animationName:String, loop:Bool, delay:Float):TrackEntry {
 		var animation:Animation = data.skeletonData.findAnimation(animationName);
 		if (animation == null)
-			throw new ArgumentError("Animation not found: " + animationName);
+			throw new SpineException("Animation not found: " + animationName);
 		return addAnimation(trackIndex, animation, loop, delay);
 	}
 
 	public function addAnimation(trackIndex:Int, animation:Animation, loop:Bool, delay:Float):TrackEntry {
 		if (animation == null)
-			throw new ArgumentError("animation cannot be null.");
+			throw new SpineException("animation cannot be null.");
 
 		var last:TrackEntry = expandToIndex(trackIndex);
 		if (last != null) {
@@ -508,7 +626,7 @@ class AnimationState {
 	private function expandToIndex(index:Int):TrackEntry {
 		if (index < tracks.length)
 			return tracks[index];
-		tracks.length = index + 1;
+		tracks.resize(index + 1);
 		return null;
 	}
 
@@ -518,6 +636,9 @@ class AnimationState {
 		entry.animation = animation;
 		entry.loop = loop;
 		entry.holdPrevious = false;
+
+		entry.reverse = false;
+		entry.shortestRotation = false;
 
 		entry.eventThreshold = 0;
 		entry.attachmentThreshold = 0;
@@ -532,13 +653,14 @@ class AnimationState {
 		entry.trackTime = 0;
 		entry.trackLast = -1;
 		entry.nextTrackLast = -1;
-		entry.trackEnd = Max.INT_MAX_VALUE;
+		entry.trackEnd = 2147483647;
 		entry.timeScale = 1;
 
 		entry.alpha = 1;
-		entry.interruptAlpha = 1;
 		entry.mixTime = 0;
 		entry.mixDuration = last == null ? 0 : data.getMix(last.animation, animation);
+		entry.interruptAlpha = 1;
+		entry.totalAlpha = 0;
 		entry.mixBlend = MixBlend.replace;
 		return entry;
 	}
@@ -575,13 +697,13 @@ class AnimationState {
 
 	private function computeHold(entry:TrackEntry):Void {
 		var to:TrackEntry = entry.mixingTo;
-		var timelines:Vector<Timeline> = entry.animation.timelines;
+		var timelines:Array<Timeline> = entry.animation.timelines;
 		var timelinesCount:Int = entry.animation.timelines.length;
-		var timelineMode:Vector<Int> = entry.timelineMode;
-		timelineMode.length = timelinesCount;
-		entry.timelineHoldMix.length = 0;
-		var timelineHoldMix:Vector<TrackEntry> = entry.timelineHoldMix;
-		timelineHoldMix.length = timelinesCount;
+		var timelineMode:Array<Int> = entry.timelineMode;
+		timelineMode.resize(timelinesCount);
+		entry.timelineHoldMix.resize(0);
+		var timelineHoldMix:Array<TrackEntry> = entry.timelineHoldMix;
+		timelineHoldMix.resize(timelinesCount);
 
 		if (to != null && to.holdPrevious) {
 			for (i in 0...timelinesCount) {
@@ -594,7 +716,7 @@ class AnimationState {
 		for (i in 0...timelinesCount) {
 			continueOuter = false;
 			var timeline:Timeline = timelines[i];
-			var ids:Vector<String> = timeline.propertyIds;
+			var ids:Array<String> = timeline.propertyIds;
 			if (!propertyIDs.addAll(ids)) {
 				timelineMode[i] = SUBSEQUENT;
 			} else if (to == null
@@ -638,12 +760,12 @@ class AnimationState {
 	}
 
 	public function clearListeners():Void {
-		onStart.listeners.length = 0;
-		onInterrupt.listeners.length = 0;
-		onEnd.listeners.length = 0;
-		onDispose.listeners.length = 0;
-		onComplete.listeners.length = 0;
-		onEvent.listeners.length = 0;
+		onStart.listeners.resize(0);
+		onInterrupt.listeners.resize(0);
+		onEnd.listeners.resize(0);
+		onDispose.listeners.resize(0);
+		onComplete.listeners.resize(0);
+		onEvent.listeners.resize(0);
 	}
 
 	public function clearListenerNotifications():Void {
@@ -652,14 +774,14 @@ class AnimationState {
 }
 
 class StringSet {
-	private var entries:Dictionary<String, Bool> = new Dictionary<String, Bool>();
+	private var entries:StringMap<Bool> = new StringMap<Bool>();
 	private var size:Int = 0;
 
 	public function new() {}
 
 	public function add(value:String):Bool {
-		var contains:Bool = entries[value];
-		entries[value] = true;
+		var contains:Bool = entries.exists(value);
+		entries.set(value, true);
 		if (!contains) {
 			size++;
 			return true;
@@ -667,7 +789,7 @@ class StringSet {
 		return false;
 	}
 
-	public function addAll(values:Vector<String>):Bool {
+	public function addAll(values:Array<String>):Bool {
 		var oldSize:Int = size;
 		for (i in 0...values.length) {
 			add(values[i]);
@@ -676,11 +798,11 @@ class StringSet {
 	}
 
 	public function contains(value:String):Bool {
-		return entries[value];
+		return entries.exists(value);
 	}
 
 	public function clear():Void {
-		entries = new Dictionary<String, Bool>();
+		entries = new StringMap<Bool>();
 		size = 0;
 	}
 }

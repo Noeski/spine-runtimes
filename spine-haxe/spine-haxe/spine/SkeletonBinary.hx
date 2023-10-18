@@ -1,9 +1,36 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
+
 package spine;
 
-import openfl.errors.ArgumentError;
-import openfl.errors.Error;
-import openfl.utils.ByteArray;
-import openfl.Vector;
+import haxe.io.Bytes;
+import StringTools;
 import spine.animation.AlphaTimeline;
 import spine.animation.Animation;
 import spine.animation.AttachmentTimeline;
@@ -25,6 +52,7 @@ import spine.animation.RotateTimeline;
 import spine.animation.ScaleTimeline;
 import spine.animation.ScaleXTimeline;
 import spine.animation.ScaleYTimeline;
+import spine.animation.SequenceTimeline;
 import spine.animation.ShearTimeline;
 import spine.animation.ShearXTimeline;
 import spine.animation.ShearYTimeline;
@@ -43,13 +71,12 @@ import spine.attachments.PathAttachment;
 import spine.attachments.PointAttachment;
 import spine.attachments.RegionAttachment;
 import spine.attachments.VertexAttachment;
-import StringTools;
 
 class SkeletonBinary {
 	public var attachmentLoader:AttachmentLoader;
 	public var scale:Float = 1;
 
-	private var linkedMeshes:Vector<LinkedMeshBinary> = new Vector<LinkedMeshBinary>();
+	private var linkedMeshes:Array<LinkedMeshBinary> = new Array<LinkedMeshBinary>();
 
 	private static inline var BONE_ROTATE:Int = 0;
 	private static inline var BONE_TRANSLATE:Int = 1;
@@ -69,6 +96,9 @@ class SkeletonBinary {
 	private static inline var SLOT_RGB2:Int = 4;
 	private static inline var SLOT_ALPHA:Int = 5;
 
+	private static inline var ATTACHMENT_DEFORM = 0;
+	private static inline var ATTACHMENT_SEQUENCE = 1;
+
 	private static inline var PATH_POSITION:Int = 0;
 	private static inline var PATH_SPACING:Int = 1;
 	private static inline var PATH_MIX:Int = 2;
@@ -77,20 +107,17 @@ class SkeletonBinary {
 	private static inline var CURVE_STEPPED:Int = 1;
 	private static inline var CURVE_BEZIER:Int = 2;
 
-	public function new(attachmentLoader:AttachmentLoader = null) {
+	public function new(attachmentLoader:AttachmentLoader) {
 		this.attachmentLoader = attachmentLoader;
 	}
 
-	public function readSkeletonData(object:ByteArray):SkeletonData {
-		if (object == null)
-			throw new ArgumentError("Object cannot be null");
-		if (!Std.isOfType(object, ByteArrayData))
-			throw new ArgumentError("Object must be ByteArrayData");
+	public function readSkeletonData(bytes:Bytes):SkeletonData {
+		// bytes.getData(). = Endian.BIG_ENDIAN;
 
 		var skeletonData:SkeletonData = new SkeletonData();
 		skeletonData.name = null;
 
-		var input:BinaryInput = new BinaryInput(object);
+		var input:BinaryInput = new BinaryInput(bytes);
 
 		var lowHash:Int = input.readInt32();
 		var highHash:Int = input.readInt32();
@@ -253,15 +280,16 @@ class SkeletonBinary {
 		for (linkedMesh in linkedMeshes) {
 			var skin:Skin = linkedMesh.skin == null ? skeletonData.defaultSkin : skeletonData.findSkin(linkedMesh.skin);
 			if (skin == null)
-				throw new Error("Skin not found: " + linkedMesh.skin);
+				throw new SpineException("Skin not found: " + linkedMesh.skin);
 			var parent:Attachment = skin.getAttachment(linkedMesh.slotIndex, linkedMesh.parent);
 			if (parent == null)
-				throw new Error("Parent mesh not found: " + linkedMesh.parent);
-			linkedMesh.mesh.deformAttachment = linkedMesh.inheritDeform ? cast(parent, VertexAttachment) : linkedMesh.mesh;
+				throw new SpineException("Parent mesh not found: " + linkedMesh.parent);
+			linkedMesh.mesh.timelineAttachment = linkedMesh.inheritTimeline ? cast(parent, VertexAttachment) : linkedMesh.mesh;
 			linkedMesh.mesh.parentMesh = cast(parent, MeshAttachment);
-			linkedMesh.mesh.updateUVs();
+			if (linkedMesh.mesh.region != null)
+				linkedMesh.mesh.updateRegion();
 		}
-		linkedMeshes.length = 0;
+		linkedMeshes.resize(0);
 
 		// Events.
 		n = input.readInt(true);
@@ -297,7 +325,7 @@ class SkeletonBinary {
 			skin = new Skin("default");
 		} else {
 			skin = new Skin(input.readStringRef());
-			skin.bones.length = input.readInt(true);
+			skin.bones.resize(input.readInt(true));
 			for (i in 0...skin.bones.length) {
 				skin.bones[i] = skeletonData.bones[input.readInt(true)];
 			}
@@ -325,6 +353,16 @@ class SkeletonBinary {
 			}
 		}
 		return skin;
+	}
+
+	private function readSequence(input:BinaryInput):Sequence {
+		if (!input.readBoolean())
+			return null;
+		var sequence = new Sequence(input.readInt(true));
+		sequence.start = input.readInt(true);
+		sequence.digits = input.readInt(true);
+		sequence.setupIndex = input.readInt(true);
+		return sequence;
 	}
 
 	private function readAttachment(input:BinaryInput, skeletonData:SkeletonData, skin:Skin, slotIndex:Int, attachmentName:String,
@@ -357,10 +395,11 @@ class SkeletonBinary {
 				width = input.readFloat();
 				height = input.readFloat();
 				color = input.readInt32();
+				var sequence = readSequence(input);
 
 				if (path == null)
 					path = name;
-				var region:RegionAttachment = attachmentLoader.newRegionAttachment(skin, name, path);
+				var region:RegionAttachment = attachmentLoader.newRegionAttachment(skin, name, path, sequence);
 				if (region == null)
 					return null;
 				region.path = path;
@@ -372,7 +411,9 @@ class SkeletonBinary {
 				region.width = width * scale;
 				region.height = height * scale;
 				region.color.setFromRgba8888(color);
-				region.updateOffset();
+				region.sequence = sequence;
+				if (sequence == null)
+					region.updateRegion();
 				return region;
 			case AttachmentType.boundingbox:
 				vertexCount = input.readInt(true);
@@ -393,11 +434,12 @@ class SkeletonBinary {
 				path = input.readStringRef();
 				color = input.readInt32();
 				vertexCount = input.readInt(true);
-				var uvs:Vector<Float> = readFloatArray(input, vertexCount << 1, 1);
-				var triangles:Vector<Int> = readShortArray(input);
+				var uvs:Array<Float> = readFloatArray(input, vertexCount << 1, 1);
+				var triangles:Array<Int> = readShortArray(input);
 				vertices = readVertices(input, vertexCount);
 				var hullLength:Int = input.readInt(true);
-				var edges:Vector<Int> = null;
+				var sequence = readSequence(input);
+				var edges:Array<Int> = null;
 				if (nonessential) {
 					edges = readShortArray(input);
 					width = input.readFloat();
@@ -406,7 +448,7 @@ class SkeletonBinary {
 
 				if (path == null)
 					path = name;
-				mesh = attachmentLoader.newMeshAttachment(skin, name, path);
+				mesh = attachmentLoader.newMeshAttachment(skin, name, path, sequence);
 				if (mesh == null)
 					return null;
 				mesh.path = path;
@@ -417,8 +459,10 @@ class SkeletonBinary {
 				mesh.worldVerticesLength = vertexCount << 1;
 				mesh.triangles = triangles;
 				mesh.regionUVs = uvs;
-				mesh.updateUVs();
+				if (sequence == null)
+					mesh.updateRegion();
 				mesh.hullLength = hullLength << 1;
+				mesh.sequence = sequence;
 				if (nonessential) {
 					mesh.edges = edges;
 					mesh.width = width * scale;
@@ -430,7 +474,8 @@ class SkeletonBinary {
 				color = input.readInt32();
 				var skinName:String = input.readStringRef();
 				var parent:String = input.readStringRef();
-				var inheritDeform:Bool = input.readBoolean();
+				var inheritTimelines:Bool = input.readBoolean();
+				var sequence = readSequence(input);
 				if (nonessential) {
 					width = input.readFloat();
 					height = input.readFloat();
@@ -438,24 +483,25 @@ class SkeletonBinary {
 
 				if (path == null)
 					path = name;
-				mesh = attachmentLoader.newMeshAttachment(skin, name, path);
+				mesh = attachmentLoader.newMeshAttachment(skin, name, path, sequence);
 				if (mesh == null)
 					return null;
 				mesh.path = path;
 				mesh.color.setFromRgba8888(color);
+				mesh.sequence = sequence;
 				if (nonessential) {
 					mesh.width = width * scale;
 					mesh.height = height * scale;
 				}
-				this.linkedMeshes.push(new LinkedMeshBinary(mesh, skinName, slotIndex, parent, inheritDeform));
+				this.linkedMeshes.push(new LinkedMeshBinary(mesh, skinName, slotIndex, parent, inheritTimelines));
 				return mesh;
 			case AttachmentType.path:
 				var closed:Bool = input.readBoolean();
 				var constantSpeed:Bool = input.readBoolean();
 				vertexCount = input.readInt(true);
 				vertices = readVertices(input, vertexCount);
-				var lengths:Vector<Float> = new Vector<Float>();
-				lengths.length = Std.int(vertexCount / 3);
+				var lengths:Array<Float> = new Array<Float>();
+				lengths.resize(Std.int(vertexCount / 3));
 				for (i in 0...lengths.length) {
 					lengths[i] = input.readFloat() * scale;
 				}
@@ -519,8 +565,8 @@ class SkeletonBinary {
 			vertices.vertices = readFloatArray(input, verticesLength, scale);
 			return vertices;
 		}
-		var weights:Vector<Float> = new Vector<Float>();
-		var bonesArray:Vector<Int> = new Vector<Int>();
+		var weights:Array<Float> = new Array<Float>();
+		var bonesArray:Array<Int> = new Array<Int>();
 		for (i in 0...vertexCount) {
 			var boneCount:Int = input.readInt(true);
 			bonesArray.push(boneCount);
@@ -536,8 +582,8 @@ class SkeletonBinary {
 		return vertices;
 	}
 
-	private function readFloatArray(input:BinaryInput, n:Int, scale:Float):Vector<Float> {
-		var array:Vector<Float> = new Vector<Float>();
+	private function readFloatArray(input:BinaryInput, n:Int, scale:Float):Array<Float> {
+		var array:Array<Float> = new Array<Float>();
 		if (scale == 1) {
 			for (i in 0...n) {
 				array.push(input.readFloat());
@@ -550,9 +596,9 @@ class SkeletonBinary {
 		return array;
 	}
 
-	private function readShortArray(input:BinaryInput):Vector<Int> {
+	private function readShortArray(input:BinaryInput):Array<Int> {
 		var n:Int = input.readInt(true);
-		var array:Vector<Int> = new Vector<Int>();
+		var array:Array<Int> = new Array<Int>();
 		for (i in 0...n) {
 			array.push(input.readShort());
 		}
@@ -561,7 +607,7 @@ class SkeletonBinary {
 
 	private function readAnimation(input:BinaryInput, name:String, skeletonData:SkeletonData):Animation {
 		input.readInt(true); // Count of timelines.
-		var timelines:Vector<Timeline> = new Vector<Timeline>();
+		var timelines:Array<Timeline> = new Array<Timeline>();
 		var i:Int = 0, n:Int = 0, ii:Int = 0, nn:Int = 0;
 
 		var index:Int, slotIndex:Int, timelineType:Int, timelineScale:Float;
@@ -983,66 +1029,83 @@ class SkeletonBinary {
 				slotIndex = input.readInt(true);
 				for (iii in 0...input.readInt(true)) {
 					var attachmentName:String = input.readStringRef();
-					var attachment:VertexAttachment = cast(skin.getAttachment(slotIndex, attachmentName), VertexAttachment);
+					var attachment = skin.getAttachment(slotIndex, attachmentName);
 					if (attachment == null)
-						throw new Error("Vertex attachment not found: " + attachmentName);
-					var weighted:Bool = attachment.bones != null;
-					var vertices:Vector<Float> = attachment.vertices;
-					var deformLength:Int = weighted ? Std.int(vertices.length / 3 * 2) : vertices.length;
-
+						throw new SpineException("Vertex attachment not found: " + attachmentName);
+					var timelineType = input.readByte();
 					frameCount = input.readInt(true);
 					frameLast = frameCount - 1;
-					bezierCount = input.readInt(true);
-					var deformTimeline:DeformTimeline = new DeformTimeline(frameCount, bezierCount, slotIndex, attachment);
 
-					time = input.readFloat();
-					frame = 0;
-					bezier = 0;
-					while (true) {
-						var deform:Vector<Float>;
-						var end:Int = input.readInt(true);
-						if (end == 0) {
-							if (weighted) {
-								deform = new Vector<Float>(deformLength, true);
-							} else {
-								deform = vertices;
-							}
-						} else {
-							var v:Int, vn:Int;
-							deform = new Vector<Float>(deformLength, true);
-							var start:Int = input.readInt(true);
-							end += start;
-							if (scale == 1) {
-								for (v in start...end) {
-									deform[v] = input.readFloat();
-								}
-							} else {
-								for (v in start...end) {
-									deform[v] = input.readFloat() * scale;
-								}
-							}
-							if (!weighted) {
-								for (v in 0...deform.length) {
-									deform[v] += vertices[v];
-								}
-							}
-						}
+					switch (timelineType) {
+						case ATTACHMENT_DEFORM:
+							var vertexAttachment = cast(attachment, VertexAttachment);
+							var weighted:Bool = vertexAttachment.bones != null;
+							var vertices:Array<Float> = vertexAttachment.vertices;
+							var deformLength:Int = weighted ? Std.int(vertices.length / 3 * 2) : vertices.length;
 
-						deformTimeline.setFrame(frame, time, deform);
-						if (frame == frameLast)
+							bezierCount = input.readInt(true);
+							var deformTimeline:DeformTimeline = new DeformTimeline(frameCount, bezierCount, slotIndex, vertexAttachment);
+
+							time = input.readFloat();
+							frame = 0;
+							bezier = 0;
+							while (true) {
+								var deform:Array<Float>;
+								var end:Int = input.readInt(true);
+								if (end == 0) {
+									if (weighted) {
+										deform = new Array<Float>();
+										deform.resize(deformLength);
+									} else {
+										deform = vertices;
+									}
+								} else {
+									var v:Int, vn:Int;
+									deform = new Array<Float>();
+									deform.resize(deformLength);
+									var start:Int = input.readInt(true);
+									end += start;
+									if (scale == 1) {
+										for (v in start...end) {
+											deform[v] = input.readFloat();
+										}
+									} else {
+										for (v in start...end) {
+											deform[v] = input.readFloat() * scale;
+										}
+									}
+									if (!weighted) {
+										for (v in 0...deform.length) {
+											deform[v] += vertices[v];
+										}
+									}
+								}
+
+								deformTimeline.setFrame(frame, time, deform);
+								if (frame == frameLast)
+									break;
+								time2 = input.readFloat();
+								switch (input.readByte()) {
+									case CURVE_STEPPED:
+										deformTimeline.setStepped(frame);
+									case CURVE_BEZIER:
+										SkeletonBinary.setBezier(input, deformTimeline, bezier++, frame, 0, time, time2, 0, 1, 1);
+								}
+								time = time2;
+
+								frame++;
+							}
+							timelines.push(deformTimeline);
+						case ATTACHMENT_SEQUENCE:
+							var timeline = new SequenceTimeline(frameCount, slotIndex, cast(attachment, HasTextureRegion));
+							for (frame in 0...frameCount) {
+								var time = input.readFloat();
+								var modeAndIndex = input.readInt32();
+								timeline.setFrame(frame, time, SequenceMode.values[modeAndIndex & 0xf], modeAndIndex >> 4, input.readFloat());
+							}
+							timelines.push(timeline);
 							break;
-						time2 = input.readFloat();
-						switch (input.readByte()) {
-							case CURVE_STEPPED:
-								deformTimeline.setStepped(frame);
-							case CURVE_BEZIER:
-								SkeletonBinary.setBezier(input, deformTimeline, bezier++, frame, 0, time, time2, 0, 1, 1);
-						}
-						time = time2;
-
-						frame++;
 					}
-					timelines.push(deformTimeline);
 				}
 			}
 		}
@@ -1055,12 +1118,14 @@ class SkeletonBinary {
 			for (i in 0...drawOrderCount) {
 				time = input.readFloat();
 				var offsetCount:Int = input.readInt(true);
-				var drawOrder:Vector<Int> = new Vector<Int>(slotCount, true);
+				var drawOrder:Array<Int> = new Array<Int>();
+				drawOrder.resize(slotCount);
 				var ii:Int = slotCount - 1;
 				while (ii >= 0) {
 					drawOrder[ii--] = -1;
 				}
-				var unchanged:Vector<Int> = new Vector<Int>(slotCount - offsetCount, true);
+				var unchanged:Array<Int> = new Array<Int>();
+				unchanged.resize(slotCount - offsetCount);
 				var originalIndex:Int = 0, unchangedIndex:Int = 0;
 				for (ii in 0...offsetCount) {
 					slotIndex = input.readInt(true);
@@ -1182,8 +1247,8 @@ class SkeletonBinary {
 }
 
 class Vertices {
-	public var vertices:Vector<Float> = new Vector<Float>();
-	public var bones:Vector<Int> = new Vector<Int>();
+	public var vertices:Array<Float> = new Array<Float>();
+	public var bones:Array<Int> = new Array<Int>();
 
 	public function new() {}
 }
@@ -1193,13 +1258,13 @@ class LinkedMeshBinary {
 	public var skin(default, null):String;
 	public var slotIndex(default, null):Int;
 	public var mesh(default, null):MeshAttachment;
-	public var inheritDeform(default, null):Bool;
+	public var inheritTimeline(default, null):Bool;
 
-	public function new(mesh:MeshAttachment, skin:String, slotIndex:Int, parent:String, inheritDeform:Bool) {
+	public function new(mesh:MeshAttachment, skin:String, slotIndex:Int, parent:String, inheritTimeline:Bool) {
 		this.mesh = mesh;
 		this.skin = skin;
 		this.slotIndex = slotIndex;
 		this.parent = parent;
-		this.inheritDeform = inheritDeform;
+		this.inheritTimeline = inheritTimeline;
 	}
 }

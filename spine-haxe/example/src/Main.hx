@@ -1,29 +1,39 @@
-package;
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*****************************************************************************/
 
-import starling.display.Image;
-import haxe.io.Bytes;
-import openfl.display.Bitmap;
-import openfl.display.BitmapData;
+import Scene.SceneManager;
 import openfl.display.Sprite;
-import openfl.Assets;
 import openfl.geom.Rectangle;
-import openfl.utils.ByteArray;
-import openfl.utils.Endian;
-import spine.animation.AnimationStateData;
-import spine.atlas.Atlas;
-import spine.attachments.AtlasAttachmentLoader;
-import spine.SkeletonBinary;
-import spine.SkeletonData;
-import spine.SkeletonJson;
-import spine.starling.SkeletonAnimation;
-import spine.starling.StarlingTextureLoader;
 import starling.core.Starling;
 import starling.events.Event;
-import starling.textures.Texture;
 
 class Main extends Sprite {
-	private static inline var loadBinary:Bool = true;
-
 	private var starlingSingleton:Starling;
 
 	public function new() {
@@ -39,39 +49,6 @@ class Main extends Sprite {
 		starlingSingleton.start();
 		Starling.current.stage.color = 0x000000;
 
-		loadSpineAnimation();
-	}
-
-	private function loadSpineAnimation():Void {
-		var textureAtlasBitmapData:BitmapData = Assets.getBitmapData("assets/coin.png");
-		var stAtlas:String = Assets.getText("assets/coin.atlas");
-		var binaryData:Bytes = Assets.getBytes("assets/coin-pro.skel");
-		var jsonData:String = Assets.getText("assets/coin-pro.json");
-
-		var textureAtlas:Texture = Texture.fromBitmapData(textureAtlasBitmapData);
-		var textureloader:StarlingTextureLoader = new StarlingTextureLoader(textureAtlas);
-		var atlas:Atlas = new Atlas(stAtlas, textureloader);
-
-		var skeletondata:SkeletonData;
-		if (loadBinary) {
-			var skeletonBinary:SkeletonBinary = new SkeletonBinary(new AtlasAttachmentLoader(atlas));
-			var bytearray:ByteArray = ByteArray.fromBytes(binaryData);
-			bytearray.endian = Endian.BIG_ENDIAN;
-			skeletondata = skeletonBinary.readSkeletonData(bytearray);
-		} else {
-			var skeletonJson:SkeletonJson = new SkeletonJson(new AtlasAttachmentLoader(atlas));
-			skeletondata = skeletonJson.readSkeletonData(jsonData);
-		}
-
-		var stateData:AnimationStateData = new AnimationStateData(skeletondata);
-		stateData.defaultMix = 0.25;
-
-		var skeletonanimation:SkeletonAnimation = new SkeletonAnimation(skeletondata, stateData);
-		skeletonanimation.x = Starling.current.stage.stageWidth / 2;
-		skeletonanimation.y = Starling.current.stage.stageHeight * 0.5;
-
-		Starling.current.stage.addChild(skeletonanimation);
-		Starling.current.juggler.add(skeletonanimation);
-		skeletonanimation.state.setAnimationByName(0, "animation", true);
+		SceneManager.getInstance().switchScene(new BasicExample());
 	}
 }
