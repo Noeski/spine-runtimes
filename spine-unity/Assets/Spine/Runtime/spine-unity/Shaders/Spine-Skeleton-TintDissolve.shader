@@ -77,7 +77,7 @@ Shader "Spine/Skeleton Tint Dissolve" {
 				VertexOutput o;
 				o.pos = UnityObjectToClipPos(v.vertex);
 				o.uv = v.uv;
-                o.noiseUV = v.vertex.xy * _NoiseScale;
+                o.noiseUV = mul(unity_ObjectToWorld, v.vertex).xy * _NoiseScale;
 				o.vertexColor = v.vertexColor * float4(_Color.rgb * _Color.a, _Color.a); // Combine a PMA version of _Color with vertexColor.
 				return o;
 			}
