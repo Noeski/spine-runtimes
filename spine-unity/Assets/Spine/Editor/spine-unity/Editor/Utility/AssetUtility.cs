@@ -612,6 +612,7 @@ namespace Spine.Unity.Editor {
 				foreach (Object animationReferenceAsset in animationReferenceAssets) {
 					if (animationReferenceAsset.name == assetName) {
 						found = true;
+						nameField.SetValue(animationReferenceAsset, animation.Name);
 						existingAnimations.Add(animationReferenceAsset);
 						break;
 					}
