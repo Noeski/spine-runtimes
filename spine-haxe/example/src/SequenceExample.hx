@@ -27,6 +27,7 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *****************************************************************************/
 
+import Scene.SceneManager;
 import openfl.utils.Assets;
 import spine.SkeletonData;
 import spine.animation.AnimationStateData;
@@ -50,7 +51,7 @@ class SequenceExample extends Scene {
 		var bounds = skeletonSprite.skeleton.getBounds();
 		skeletonSprite.scale = Starling.current.stage.stageWidth / bounds.width * 0.5;
 		skeletonSprite.x = Starling.current.stage.stageWidth / 2;
-		skeletonSprite.y = Starling.current.stage.stageHeight * 0.9;
+		skeletonSprite.y = Starling.current.stage.stageHeight * 0.5;
 		skeletonSprite.state.setAnimationByName(0, "flying", true);
 
 		addChild(skeletonSprite);
@@ -62,7 +63,7 @@ class SequenceExample extends Scene {
 	public function onTouch(e:TouchEvent) {
 		var touch = e.getTouch(this);
 		if (touch != null && touch.phase == TouchPhase.ENDED) {
-			trace("Mouse clicked");
+			SceneManager.getInstance().switchScene(new MixAndMatchExample());
 		}
 	}
 }

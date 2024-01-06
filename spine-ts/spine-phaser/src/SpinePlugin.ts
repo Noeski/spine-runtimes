@@ -28,9 +28,9 @@
  *****************************************************************************/
 
 import Phaser from "phaser";
-import { SPINE_ATLAS_CACHE_KEY, SPINE_GAME_OBJECT_TYPE, SPINE_SKELETON_DATA_FILE_TYPE, SPINE_ATLAS_FILE_TYPE, SPINE_SKELETON_FILE_CACHE_KEY as SPINE_SKELETON_DATA_CACHE_KEY } from "./keys";
+import { SPINE_ATLAS_CACHE_KEY, SPINE_GAME_OBJECT_TYPE, SPINE_SKELETON_DATA_FILE_TYPE, SPINE_ATLAS_FILE_TYPE, SPINE_SKELETON_FILE_CACHE_KEY as SPINE_SKELETON_DATA_CACHE_KEY } from "./keys.js";
 import { AtlasAttachmentLoader, GLTexture, SceneRenderer, Skeleton, SkeletonBinary, SkeletonData, SkeletonJson, TextureAtlas } from "@esotericsoftware/spine-webgl"
-import { SpineGameObject, SpineGameObjectBoundsProvider } from "./SpineGameObject";
+import { SpineGameObject, SpineGameObjectBoundsProvider } from "./SpineGameObject.js";
 import { CanvasTexture, SkeletonRenderer } from "@esotericsoftware/spine-canvas";
 
 /**
@@ -193,6 +193,7 @@ export class SpinePlugin extends Phaser.Plugins.ScenePlugin {
 	gameDestroy () {
 		this.pluginManager.removeGameObject((window as any).SPINE_GAME_OBJECT_TYPE ? (window as any).SPINE_GAME_OBJECT_TYPE : SPINE_GAME_OBJECT_TYPE, true, true);
 		if (this.webGLRenderer) this.webGLRenderer.dispose();
+		SpinePlugin.gameWebGLRenderer = null;
 	}
 
 	/** Returns the TextureAtlas instance for the given key */
@@ -205,7 +206,7 @@ export class SpinePlugin extends Phaser.Plugins.ScenePlugin {
 			atlas = new TextureAtlas(atlasFile.data);
 			if (this.isWebGL) {
 				let gl = this.gl!;
-				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+				if (GLTexture.DISABLE_UNPACK_PREMULTIPLIED_ALPHA_WEBGL) gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 				for (let atlasPage of atlas.pages) {
 					atlasPage.setTexture(new GLTexture(gl, this.game.textures.get(atlasKey + "!" + atlasPage.name).getSourceImage() as HTMLImageElement | ImageBitmap, false));
 				}

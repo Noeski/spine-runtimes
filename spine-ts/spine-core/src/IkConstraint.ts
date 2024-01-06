@@ -27,12 +27,12 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import { Bone } from "./Bone";
-import { TransformMode } from "./BoneData";
-import { IkConstraintData } from "./IkConstraintData";
-import { Skeleton } from "./Skeleton";
-import { Updatable } from "./Updatable";
-import { MathUtils } from "./Utils";
+import { Bone } from "./Bone.js";
+import { TransformMode } from "./BoneData.js";
+import { IkConstraintData } from "./IkConstraintData.js";
+import { Skeleton } from "./Skeleton.js";
+import { Updatable } from "./Updatable.js";
+import { MathUtils } from "./Utils.js";
 
 /** Stores the current pose for an IK constraint. An IK constraint adjusts the rotation of 1 or 2 constrained bones so the tip of
  * the last bone is as close to the target bone as possible.
@@ -113,8 +113,8 @@ export class IkConstraint implements Updatable {
 
 		switch (bone.data.transformMode) {
 			case TransformMode.OnlyTranslation:
-				tx = targetX - bone.worldX;
-				ty = targetY - bone.worldY;
+				tx = (targetX - bone.worldX) * MathUtils.signum(bone.skeleton.scaleX);
+				ty = (targetY - bone.worldY) * MathUtils.signum(bone.skeleton.scaleY);
 				break;
 			case TransformMode.NoRotationOrReflection:
 				let s = Math.abs(pa * pd - pb * pc) / Math.max(0.0001, pa * pa + pc * pc);

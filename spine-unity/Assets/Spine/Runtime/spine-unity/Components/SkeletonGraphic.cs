@@ -604,6 +604,8 @@ namespace Spine.Unity {
 				SetRectTransformSize(submeshGraphic, size);
 				submeshGraphic.rectTransform.pivot = p;
 			}
+
+			this.referenceSize = size;
 		}
 
 		public static void SetRectTransformSize (Graphic target, Vector2 size) {
@@ -999,6 +1001,10 @@ namespace Spine.Unity {
 				SkeletonSubmeshGraphic submeshGraphic = go.AddComponent<SkeletonSubmeshGraphic>();
 				submeshGraphic.maskable = this.maskable;
 				submeshGraphic.raycastTarget = false;
+				submeshGraphic.rectTransform.pivot = rectTransform.pivot;
+				submeshGraphic.rectTransform.anchorMin = Vector2.zero;
+				submeshGraphic.rectTransform.anchorMax = Vector2.one;
+				submeshGraphic.rectTransform.sizeDelta = Vector2.zero;
 				submeshGraphics.Add(submeshGraphic);
 			}
 		}

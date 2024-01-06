@@ -38,11 +38,12 @@ import 'package:flutter/rendering.dart' as rendering;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
-import 'package:raw_image_provider/raw_image_provider.dart';
+
 
 import 'ffi_proxy.dart';
 import 'init.dart' if (dart.library.html) 'init_web.dart';
 import 'spine_flutter_bindings_generated.dart';
+import 'raw_image_provider.dart';
 
 export 'spine_widget.dart';
 
@@ -100,6 +101,7 @@ class Vec2 {
 /// Use the static methods [fromAsset], [fromFile], and [fromHttp] to load an atlas. Call [dispose]
 /// when the atlas is no longer in use to release its resources.
 class Atlas {
+  static FilterQuality filterQuality = FilterQuality.medium;
   final spine_atlas _atlas;
   final List<Image> atlasPages;
   final List<Map<BlendMode, Paint>> atlasPagePaints;
@@ -137,7 +139,7 @@ class Atlas {
         paints[blendMode] = Paint()
           ..shader = ImageShader(image, TileMode.clamp, TileMode.clamp, Matrix4
               .identity()
-              .storage, filterQuality: FilterQuality.high)
+              .storage, filterQuality: Atlas.filterQuality)
           ..isAntiAlias = true
           ..blendMode = blendMode.canvasBlendMode;
       }
@@ -549,7 +551,7 @@ class SkeletonData {
 enum BlendMode {
   normal(0, rendering.BlendMode.srcOver),
   additive(1, rendering.BlendMode.plus),
-  multiply(2, rendering.BlendMode.modulate),
+  multiply(2, rendering.BlendMode.multiply),
   screen(3, rendering.BlendMode.screen);
 
   final int value;
@@ -3705,7 +3707,7 @@ class AnimationState {
         final nativeEvent = _bindings.spine_animation_state_events_get_event(_events, i);
         final event = nativeEvent.address == nullptr.address ? null : Event._(nativeEvent);
         if (_trackEntryListeners.containsKey(nativeEntry)) {
-          _trackEntryListeners[entry]?.call(type, entry, event);
+          _trackEntryListeners[nativeEntry]?.call(type, entry, event);
         }
         if (_stateListener != null) {
           _stateListener?.call(type, entry, event);

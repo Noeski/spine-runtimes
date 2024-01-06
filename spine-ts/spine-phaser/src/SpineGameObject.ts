@@ -27,8 +27,8 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import { SPINE_GAME_OBJECT_TYPE } from "./keys";
-import { SpinePlugin } from "./SpinePlugin";
+import { SPINE_GAME_OBJECT_TYPE } from "./keys.js";
+import { SpinePlugin } from "./SpinePlugin.js";
 import {
 	ComputedSizeMixin,
 	DepthMixin,
@@ -38,7 +38,7 @@ import {
 	VisibleMixin,
 	AlphaMixin,
 	OriginMixin,
-} from "./mixins";
+} from "./mixins.js";
 import {
 	AnimationState,
 	AnimationStateData,
