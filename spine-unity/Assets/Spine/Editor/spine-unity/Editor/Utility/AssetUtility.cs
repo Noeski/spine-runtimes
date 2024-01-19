@@ -600,19 +600,26 @@ namespace Spine.Unity.Editor {
 				return;
 			}
 
-			HashSet<Object> existingAnimations = new HashSet<Object>();
-			Object[] animationReferenceAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(AssetDatabase.GetAssetPath(skeletonDataAsset));
+			HashSet<AnimationReferenceAsset> existingAnimations = new HashSet<AnimationReferenceAsset>();
+			HashSet<EventDataReferenceAsset> existingEvents = new HashSet<EventDataReferenceAsset>();
+			Object[] referenceAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(AssetDatabase.GetAssetPath(skeletonDataAsset));
+			AnimationReferenceAsset[] animationReferenceAssets = referenceAssets.OfType<AnimationReferenceAsset>().ToArray();
+			EventDataReferenceAsset[] eventDataReferenceAssets = referenceAssets.OfType<EventDataReferenceAsset>().ToArray();
 
-			FieldInfo nameField = typeof(AnimationReferenceAsset).GetField("animationName", BindingFlags.NonPublic | BindingFlags.Instance);
-			FieldInfo skeletonDataAssetField = typeof(AnimationReferenceAsset).GetField("skeletonDataAsset", BindingFlags.NonPublic | BindingFlags.Instance);
+			FieldInfo animationNameField = typeof(AnimationReferenceAsset).GetField("animationName", BindingFlags.NonPublic | BindingFlags.Instance);
+			FieldInfo eventNameField = typeof(EventDataReferenceAsset).GetField("eventName", BindingFlags.NonPublic | BindingFlags.Instance);
+
+			FieldInfo animationSkeletonDataAssetField = typeof(AnimationReferenceAsset).GetField("skeletonDataAsset", BindingFlags.NonPublic | BindingFlags.Instance);
+			FieldInfo eventSkeletonDataAssetField = typeof(EventDataReferenceAsset).GetField("skeletonDataAsset", BindingFlags.NonPublic | BindingFlags.Instance);
+
 			foreach (Animation animation in skeletonData.Animations) {
 				string assetName = AssetUtility.GetPathSafeName(animation.Name);
 				bool found = false;
 
-				foreach (Object animationReferenceAsset in animationReferenceAssets) {
+				foreach (AnimationReferenceAsset animationReferenceAsset in animationReferenceAssets) {
 					if (animationReferenceAsset.name == assetName) {
 						found = true;
-						nameField.SetValue(animationReferenceAsset, animation.Name);
+						animationNameField.SetValue(animationReferenceAsset, animation.Name);
 						existingAnimations.Add(animationReferenceAsset);
 						break;
 					}
@@ -624,14 +631,44 @@ namespace Spine.Unity.Editor {
 
 				AnimationReferenceAsset newAsset = ScriptableObject.CreateInstance<AnimationReferenceAsset>();
 				newAsset.name = assetName;
-				skeletonDataAssetField.SetValue(newAsset, skeletonDataAsset);
-				nameField.SetValue(newAsset, animation.Name);
+				animationSkeletonDataAssetField.SetValue(newAsset, skeletonDataAsset);
+				animationNameField.SetValue(newAsset, animation.Name);
 				AssetDatabase.AddObjectToAsset(newAsset, skeletonDataAsset);
 			}
 
-			foreach (Object animationReferenceAsset in animationReferenceAssets) {
+			foreach (EventData eventData in skeletonData.Events) {
+				string assetName = AssetUtility.GetPathSafeName("event/" + eventData.Name);
+				bool found = false;
+
+				foreach (EventDataReferenceAsset eventDataReferenceAsset in eventDataReferenceAssets) {
+					if (eventDataReferenceAsset.name == assetName) {
+						found = true;
+						eventNameField.SetValue(eventDataReferenceAsset, eventData.Name);
+						existingEvents.Add(eventDataReferenceAsset);
+						break;
+					}
+				}
+
+				if (found) {
+					continue;
+				}
+
+				EventDataReferenceAsset newAsset = ScriptableObject.CreateInstance<EventDataReferenceAsset>();
+				newAsset.name = assetName;
+				eventSkeletonDataAssetField.SetValue(newAsset, skeletonDataAsset);
+				eventNameField.SetValue(newAsset, eventData.Name);
+				AssetDatabase.AddObjectToAsset(newAsset, skeletonDataAsset);
+			}
+
+			foreach (AnimationReferenceAsset animationReferenceAsset in animationReferenceAssets) {
 				if (!existingAnimations.Contains(animationReferenceAsset)) {
 					AssetDatabase.RemoveObjectFromAsset(animationReferenceAsset);
+				}
+			}
+
+			foreach (EventDataReferenceAsset eventDataReferenceAsset in eventDataReferenceAssets) {
+				if (!existingEvents.Contains(eventDataReferenceAsset)) {
+					AssetDatabase.RemoveObjectFromAsset(eventDataReferenceAsset);
 				}
 			}
 
