@@ -28,7 +28,7 @@
  *****************************************************************************/
 
 #include "IKExample.h"
-#include "SpineboyExample.h"
+#include "PhysicsExample.h"
 
 USING_NS_CC;
 using namespace spine;
@@ -98,12 +98,12 @@ bool IKExample::init() {
 		crosshair->setX(localX);
 		crosshair->setY(localY);
 
-		node->getSkeleton()->updateWorldTransform();
+		node->getSkeleton()->updateWorldTransform(spine::Physics_Update);
 	});
 
 	EventListenerTouchOneByOne *listener = EventListenerTouchOneByOne::create();
 	listener->onTouchBegan = [this](Touch *touch, cocos2d::Event *event) -> bool {
-		Director::getInstance()->replaceScene(SpineboyExample::scene());
+		Director::getInstance()->replaceScene(PhysicsExample::scene());
 		return true;
 	};
 

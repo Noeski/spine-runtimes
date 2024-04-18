@@ -36,6 +36,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 
+import com.esotericsoftware.spine.Skeleton.Physics;
 import com.esotericsoftware.spine.utils.TwoColorPolygonBatch;
 
 /** Demonstrates loading, animating, and rendering a skeleton.
@@ -60,9 +61,9 @@ public class SimpleTest1 extends ApplicationAdapter {
 		debugRenderer.setRegionAttachments(false);
 
 		atlas = new TextureAtlas(Gdx.files.internal("spineboy/spineboy-pma.atlas"));
-		SkeletonBinary json = new SkeletonBinary(atlas); // This loads skeleton JSON data, which is stateless.
+		SkeletonJson json = new SkeletonJson(atlas); // This loads skeleton JSON data, which is stateless.
 		json.setScale(0.6f); // Load the skeleton at 60% the size it was in Spine.
-		SkeletonData skeletonData = json.readSkeletonData(Gdx.files.internal("spineboy/spineboy-pro.skel"));
+		SkeletonData skeletonData = json.readSkeletonData(Gdx.files.internal("spineboy/spineboy-pro.json"));
 
 		skeleton = new Skeleton(skeletonData); // Skeleton holds skeleton state (bone positions, slot attachments, etc).
 		skeleton.setPosition(250, 20);
@@ -81,12 +82,14 @@ public class SimpleTest1 extends ApplicationAdapter {
 	}
 
 	public void render () {
-		state.update(Gdx.graphics.getDeltaTime()); // Update the animation time.
+		float delta = Gdx.graphics.getDeltaTime();
+		state.update(delta); // Update the animation time.
 
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
 		state.apply(skeleton); // Poses skeleton using current animations. This sets the bones' local SRT.
-		skeleton.updateWorldTransform(); // Uses the bones' local SRT to compute their world SRT.
+		skeleton.update(delta); // Advance the skeleton time. This is needed when the skeleton has physics.
+		skeleton.updateWorldTransform(Physics.update); // Uses the bones' local SRT to compute their world SRT.
 
 		// Configure the camera, SpriteBatch, and SkeletonRendererDebug.
 		camera.update();

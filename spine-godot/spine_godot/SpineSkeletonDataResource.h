@@ -29,16 +29,17 @@
 
 #pragma once
 
-#include "SpineAtlasResource.h"
-#include "SpineSkeletonFileResource.h"
 #include "SpineAnimation.h"
+#include "SpineAtlasResource.h"
 #include "SpineBoneData.h"
-#include "SpineSlotData.h"
-#include "SpineSkin.h"
-#include "SpineIkConstraintData.h"
-#include "SpineTransformConstraintData.h"
-#include "SpinePathConstraintData.h"
 #include "SpineEventData.h"
+#include "SpineIkConstraintData.h"
+#include "SpinePathConstraintData.h"
+#include "SpinePhysicsConstraintData.h"
+#include "SpineSkeletonFileResource.h"
+#include "SpineSkin.h"
+#include "SpineSlotData.h"
+#include "SpineTransformConstraintData.h"
 
 class SpineAnimationMix : public Resource {
 	GDCLASS(SpineAnimationMix, Resource)
@@ -83,7 +84,8 @@ private:
 
 	void update_skeleton_data();
 
-	void load_resources(spine::Atlas *atlas, const String &json, const Vector<uint8_t> &binary);
+	void load_resources(spine::Atlas *atlas, const String &json,
+						const Vector<uint8_t> &binary);
 
 public:
 	SpineSkeletonDataResource();
@@ -94,12 +96,15 @@ public:
 	void set_atlas_res(const Ref<SpineAtlasResource> &atlas);
 	Ref<SpineAtlasResource> get_atlas_res();
 
-	void set_skeleton_file_res(const Ref<SpineSkeletonFileResource> &skeleton_file);
+	void
+	set_skeleton_file_res(const Ref<SpineSkeletonFileResource> &skeleton_file);
 	Ref<SpineSkeletonFileResource> get_skeleton_file_res();
 
 	spine::SkeletonData *get_skeleton_data() const { return skeleton_data; }
 
-	spine::AnimationStateData *get_animation_state_data() const { return animation_state_data; }
+	spine::AnimationStateData *get_animation_state_data() const {
+		return animation_state_data;
+	}
 
 	void get_animation_names(Vector<String> &animation_names) const;
 
@@ -117,7 +122,8 @@ public:
 
 	Array get_animation_mixes();
 
-	// Used by SpineEditorPropertyAnimationMix(es) to update the underlying AnimationState
+	// Used by SpineEditorPropertyAnimationMix(es) to update the underlying
+	// AnimationState
 	void update_mixes();
 
 	// Spine API
@@ -131,11 +137,17 @@ public:
 
 	Ref<SpineAnimation> find_animation(const String &animation_name) const;
 
-	Ref<SpineIkConstraintData> find_ik_constraint(const String &constraint_name) const;
+	Ref<SpineIkConstraintData>
+	find_ik_constraint(const String &constraint_name) const;
 
-	Ref<SpineTransformConstraintData> find_transform_constraint(const String &constraint_name) const;
+	Ref<SpineTransformConstraintData>
+	find_transform_constraint(const String &constraint_name) const;
 
-	Ref<SpinePathConstraintData> find_path_constraint(const String &constraint_name) const;
+	Ref<SpinePathConstraintData>
+	find_path_constraint(const String &constraint_name) const;
+
+	Ref<SpinePhysicsConstraintData>
+	find_physics_constraint(const String &constraint_name) const;
 
 	String get_skeleton_name() const;
 
@@ -159,6 +171,8 @@ public:
 
 	Array get_path_constraints() const;
 
+	Array get_physics_constraints() const;
+
 	float get_x() const;
 
 	float get_y() const;
@@ -176,4 +190,8 @@ public:
 	String get_audio_path() const;
 
 	float get_fps() const;
+
+	float get_reference_scale() const;
+
+	void set_reference_scale(float reference_scale);
 };

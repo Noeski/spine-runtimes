@@ -49,7 +49,7 @@ export class BoneData {
 	/** The local y translation. */
 	y = 0;
 
-	/** The local rotation. */
+	/** The local rotation in degrees, counter clockwise. */
 	rotation = 0;
 
 	/** The local scaleX. */
@@ -65,7 +65,7 @@ export class BoneData {
 	shearY = 0;
 
 	/** The transform mode for how parent world transforms affect this bone. */
-	transformMode = TransformMode.Normal;
+	inherit = Inherit.Normal;
 
 	/** When true, {@link Skeleton#updateWorldTransform()} only updates this bone if the {@link Skeleton#skin} contains this
 	  * bone.
@@ -75,6 +75,12 @@ export class BoneData {
 	/** The color of the bone as it was in Spine. Available only when nonessential data was exported. Bones are not usually
 	 * rendered at runtime. */
 	color = new Color();
+
+	/** The bone icon as it was in Spine, or null if nonessential data was not exported. */
+	icon?: string;
+
+	/** False if the bone was hidden in Spine and nonessential data was exported. Does not affect runtime rendering. */
+	visible = false;
 
 	constructor (index: number, name: string, parent: BoneData | null) {
 		if (index < 0) throw new Error("index must be >= 0.");
@@ -86,4 +92,4 @@ export class BoneData {
 }
 
 /** Determines how a bone inherits world transforms from parent bones. */
-export enum TransformMode { Normal, OnlyTranslation, NoRotationOrReflection, NoScale, NoScaleOrReflection }
+export enum Inherit { Normal, OnlyTranslation, NoRotationOrReflection, NoScale, NoScaleOrReflection }

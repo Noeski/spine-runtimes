@@ -32,6 +32,8 @@ package com.esotericsoftware.spine;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.Null;
 
+import com.esotericsoftware.spine.Skeleton.Physics;
+
 /** Stores the setup pose for a {@link Bone}. */
 public class BoneData {
 	final int index;
@@ -39,11 +41,13 @@ public class BoneData {
 	@Null final BoneData parent;
 	float length;
 	float x, y, rotation, scaleX = 1, scaleY = 1, shearX, shearY;
-	TransformMode transformMode = TransformMode.normal;
+	Inherit inherit = Inherit.normal;
 	boolean skinRequired;
 
 	// Nonessential.
 	final Color color = new Color(0.61f, 0.61f, 0.61f, 1); // 9b9b9bff
+	@Null String icon;
+	boolean visible;
 
 	public BoneData (int index, String name, @Null BoneData parent) {
 		if (index < 0) throw new IllegalArgumentException("index must be >= 0.");
@@ -115,7 +119,7 @@ public class BoneData {
 		this.y = y;
 	}
 
-	/** The local rotation. */
+	/** The local rotation in degrees, counter clockwise. */
 	public float getRotation () {
 		return rotation;
 	}
@@ -165,18 +169,18 @@ public class BoneData {
 		this.shearY = shearY;
 	}
 
-	/** The transform mode for how parent world transforms affect this bone. */
-	public TransformMode getTransformMode () {
-		return transformMode;
+	/** Determines how parent world transforms affect this bone. */
+	public Inherit getInherit () {
+		return inherit;
 	}
 
-	public void setTransformMode (TransformMode transformMode) {
-		if (transformMode == null) throw new IllegalArgumentException("transformMode cannot be null.");
-		this.transformMode = transformMode;
+	public void setInherit (Inherit inherit) {
+		if (inherit == null) throw new IllegalArgumentException("inherit cannot be null.");
+		this.inherit = inherit;
 	}
 
-	/** When true, {@link Skeleton#updateWorldTransform()} only updates this bone if the {@link Skeleton#getSkin()} contains this
-	 * bone.
+	/** When true, {@link Skeleton#updateWorldTransform(Physics)} only updates this bone if the {@link Skeleton#getSkin()} contains
+	 * this bone.
 	 * <p>
 	 * See {@link Skin#getBones()}. */
 	public boolean getSkinRequired () {
@@ -193,14 +197,32 @@ public class BoneData {
 		return color;
 	}
 
+	/** The bone icon as it was in Spine, or null if nonessential data was not exported. */
+	public @Null String getIcon () {
+		return icon;
+	}
+
+	public void setIcon (@Null String icon) {
+		this.icon = icon;
+	}
+
+	/** False if the bone was hidden in Spine and nonessential data was exported. Does not affect runtime rendering. */
+	public boolean getVisible () {
+		return visible;
+	}
+
+	public void setVisible (boolean visible) {
+		this.visible = visible;
+	}
+
 	public String toString () {
 		return name;
 	}
 
 	/** Determines how a bone inherits world transforms from parent bones. */
-	static public enum TransformMode {
+	static public enum Inherit {
 		normal, onlyTranslation, noRotationOrReflection, noScale, noScaleOrReflection;
 
-		static public final TransformMode[] values = TransformMode.values();
+		static public final Inherit[] values = Inherit.values();
 	}
 }

@@ -39,6 +39,7 @@ namespace Spine {
 		protected SkeletonRenderer skeletonRenderer;
 		private MouseState lastMouseState;
 		protected Boolean mouseClicked = false;
+		protected Point mousePos;
 
 		public Screen (Example game) {
 			this.game = game;
@@ -50,6 +51,7 @@ namespace Spine {
 			MouseState state = Mouse.GetState();
 			mouseClicked = lastMouseState.LeftButton == ButtonState.Pressed && state.LeftButton == ButtonState.Released;
 			lastMouseState = state;
+			mousePos = lastMouseState.Position;
 		}
 
 		public abstract void Render (float deltaTime);
@@ -89,10 +91,11 @@ namespace Spine {
 			// Update the animation state and apply the animations
 			// to the skeleton
 			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
 			state.Apply(skeleton);
 
 			// Update the transformations of bones and other parts of the skeleton
-			skeleton.UpdateWorldTransform();
+			skeleton.UpdateWorldTransform(Skeleton.Physics.Update);
 
 			// Clear the screen and setup the projection matrix of the skeleton renderer
 			game.GraphicsDevice.Clear(Color.Black);
@@ -142,9 +145,10 @@ namespace Spine {
 
 		public override void Render (float deltaTime) {
 			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
 			state.Apply(skeleton);
 
-			skeleton.UpdateWorldTransform();
+			skeleton.UpdateWorldTransform(Skeleton.Physics.Update);
 
 			// Clear the screen and setup the projection matrix of the custom effect through the
 			// "Projection" parameter.
@@ -199,8 +203,10 @@ namespace Spine {
 
 		public override void Render (float deltaTime) {
 			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
 			state.Apply(skeleton);
-			skeleton.UpdateWorldTransform();
+
+			skeleton.UpdateWorldTransform(Skeleton.Physics.Update);
 
 			game.GraphicsDevice.Clear(Color.Black);
 			((BasicEffect)skeletonRenderer.Effect).Projection = Matrix.CreateOrthographicOffCenter(0, game.GraphicsDevice.Viewport.Width, game.GraphicsDevice.Viewport.Height, 0, 1, 0);
@@ -209,7 +215,7 @@ namespace Spine {
 			skeletonRenderer.Draw(skeleton);
 			skeletonRenderer.End();
 
-			if (mouseClicked) game.currentScreen = new MixAndMatchScreen(game);
+			if (mouseClicked) game.currentScreen = new PhysicsScreenCelestial(game);
 		}
 	}
 
@@ -258,8 +264,10 @@ namespace Spine {
 
 		public override void Render (float deltaTime) {
 			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
 			state.Apply(skeleton);
-			skeleton.UpdateWorldTransform();
+
+			skeleton.UpdateWorldTransform(Skeleton.Physics.Update);
 
 			game.GraphicsDevice.Clear(Color.Black);
 			((BasicEffect)skeletonRenderer.Effect).Projection = Matrix.CreateOrthographicOffCenter(0, game.GraphicsDevice.Viewport.Width, game.GraphicsDevice.Viewport.Height, 0, 1, 0);
@@ -269,6 +277,119 @@ namespace Spine {
 			skeletonRenderer.End();
 
 			if (mouseClicked) game.currentScreen = new RaptorScreen(game);
+		}
+	}
+
+	/// <summary>
+	/// The physics screen Cloud Pot demonstrates Physics Constraints introduced in Spine 4.2
+	/// using the cloud-pot skeleton.
+	/// </summary>
+	internal class PhysicsScreenCloudPot : Screen {
+		Atlas atlas;
+		Skeleton skeleton;
+		AnimationState state;
+
+		public PhysicsScreenCloudPot (Example game) : base(game) {
+			atlas = new Atlas("data/cloud-pot.atlas", new XnaTextureLoader(game.GraphicsDevice));
+
+			SkeletonBinary binary = new SkeletonBinary(atlas);
+			binary.Scale = 0.15f;
+			SkeletonData skeletonData = binary.ReadSkeletonData("data/cloud-pot.skel");
+
+			skeleton = new Skeleton(skeletonData);
+			AnimationStateData stateData = new AnimationStateData(skeleton.Data);
+			state = new AnimationState(stateData);
+
+			skeleton.X = game.GraphicsDevice.Viewport.Width / 2;
+			skeleton.Y = game.GraphicsDevice.Viewport.Height * 2f / 3f;
+
+			state.SetAnimation(0, "playing-in-the-rain", true);
+		}
+
+		public override void Render (float deltaTime) {
+			Vector2 position = mousePos.ToVector2();
+			skeleton.X = position.X;
+			skeleton.Y = position.Y;
+
+			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
+			// Note: if you are not directly modifying skeleton.X or .Y, you can apply external
+			// movement to physics via the following code:
+			// Vector2 lastPosition; // add as a member variable
+			// ..
+			// Vector2 currentPosition = <current world position>;
+			// Vector2 externalPositionDelta = currentPosition - lastPosition;
+			// skeleton.PhysicsTranslate(externalPositionDelta.x, externalPositionDelta.y);
+			// lastPosition = currentPosition;
+
+			state.Apply(skeleton);
+			skeleton.UpdateWorldTransform(Skeleton.Physics.Update);
+
+			game.GraphicsDevice.Clear(Color.Black);
+			((BasicEffect)skeletonRenderer.Effect).Projection = Matrix.CreateOrthographicOffCenter(0, game.GraphicsDevice.Viewport.Width, game.GraphicsDevice.Viewport.Height, 0, 1, 0);
+
+			skeletonRenderer.Begin();
+			skeletonRenderer.Draw(skeleton);
+			skeletonRenderer.End();
+
+			if (mouseClicked) game.currentScreen = new MixAndMatchScreen(game);
+		}
+	}
+
+	/// <summary>
+	/// The physics screen Celestial demonstrates Physics Constraints introduced in Spine 4.2
+	/// using the celestial-circus skeleton.
+	/// </summary>
+	internal class PhysicsScreenCelestial : Screen {
+		Atlas atlas;
+		Skeleton skeleton;
+		AnimationState state;
+
+		public PhysicsScreenCelestial (Example game) : base(game) {
+			atlas = new Atlas("data/celestial-circus.atlas", new XnaTextureLoader(game.GraphicsDevice));
+
+			SkeletonJson json = new SkeletonJson(atlas);
+			json.Scale = 0.15f;
+			SkeletonData skeletonData = json.ReadSkeletonData("data/celestial-circus-pro.json");
+
+			skeleton = new Skeleton(skeletonData);
+			AnimationStateData stateData = new AnimationStateData(skeleton.Data);
+			state = new AnimationState(stateData);
+
+			skeleton.X = game.GraphicsDevice.Viewport.Width / 2;
+			skeleton.Y = game.GraphicsDevice.Viewport.Height * 2f / 3f;
+
+			state.SetAnimation(0, "swing", true);
+			state.SetAnimation(1, "eyeblink", true);
+		}
+
+		public override void Render (float deltaTime) {
+			Vector2 position = mousePos.ToVector2();
+			skeleton.X = position.X;
+			skeleton.Y = position.Y;
+
+			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
+			// Note: if you are not directly modifying skeleton.X or .Y, you can apply external
+			// movement to physics via the following code:
+			// Vector2 lastPosition; // add as a member variable
+			// ..
+			// Vector2 currentPosition = <current world position>;
+			// Vector2 externalPositionDelta = currentPosition - lastPosition;
+			// skeleton.PhysicsTranslate(externalPositionDelta.x, externalPositionDelta.y);
+			// lastPosition = currentPosition;
+
+			state.Apply(skeleton);
+			skeleton.UpdateWorldTransform(Skeleton.Physics.Update);
+
+			game.GraphicsDevice.Clear(Color.Black);
+			((BasicEffect)skeletonRenderer.Effect).Projection = Matrix.CreateOrthographicOffCenter(0, game.GraphicsDevice.Viewport.Width, game.GraphicsDevice.Viewport.Height, 0, 1, 0);
+
+			skeletonRenderer.Begin();
+			skeletonRenderer.Draw(skeleton);
+			skeletonRenderer.End();
+
+			if (mouseClicked) game.currentScreen = new PhysicsScreenCloudPot(game);
 		}
 	}
 
@@ -286,7 +407,7 @@ namespace Spine {
 		}
 
 		protected override void LoadContent () {
-			currentScreen = new MixAndMatchScreen(this);
+			currentScreen = new PhysicsScreenCelestial(this);
 		}
 
 		protected override void Update (GameTime gameTime) {

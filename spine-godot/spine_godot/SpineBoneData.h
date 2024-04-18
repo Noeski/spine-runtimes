@@ -80,9 +80,9 @@ public:
 
 	void set_shear_y(float v);
 
-	SpineConstant::TransformMode get_transform_mode();
+	SpineConstant::Inherit get_inherit();
 
-	void set_transform_mode(SpineConstant::TransformMode v);
+	void set_inherit(SpineConstant::Inherit v);
 
 	bool is_skin_required();
 
@@ -91,4 +91,10 @@ public:
 	Color get_color();
 
 	void set_color(Color color);
+
+	String get_icon();
+
+	bool is_visible();
+
+	void set_visible(bool v);
 };

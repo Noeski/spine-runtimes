@@ -47,7 +47,8 @@ public class SkeletonData {
 	final Array<IkConstraintData> ikConstraints = new Array();
 	final Array<TransformConstraintData> transformConstraints = new Array();
 	final Array<PathConstraintData> pathConstraints = new Array();
-	float x, y, width, height;
+	final Array<PhysicsConstraintData> physicsConstraints = new Array();
+	float x, y, width, height, referenceScale = 100;
 	@Null String version, hash;
 
 	// Nonessential.
@@ -79,7 +80,7 @@ public class SkeletonData {
 
 	// --- Slots.
 
-	/** The skeleton's slots. */
+	/** The skeleton's slots in the setup pose draw order. */
 	public Array<SlotData> getSlots () {
 		return slots;
 	}
@@ -215,6 +216,25 @@ public class SkeletonData {
 		return null;
 	}
 
+	// --- Physics constraints
+
+	/** The skeleton's physics constraints. */
+	public Array<PhysicsConstraintData> getPhysicsConstraints () {
+		return physicsConstraints;
+	}
+
+	/** Finds a physics constraint by comparing each physics constraint's name. It is more efficient to cache the results of this
+	 * method than to call it multiple times. */
+	public @Null PhysicsConstraintData findPhysicsConstraint (String constraintName) {
+		if (constraintName == null) throw new IllegalArgumentException("constraintName cannot be null.");
+		Object[] physicsConstraints = this.physicsConstraints.items;
+		for (int i = 0, n = this.physicsConstraints.size; i < n; i++) {
+			PhysicsConstraintData constraint = (PhysicsConstraintData)physicsConstraints[i];
+			if (constraint.name.equals(constraintName)) return constraint;
+		}
+		return null;
+	}
+
 	// ---
 
 	/** The skeleton's name, which by default is the name of the skeleton data file when possible, or null when a name hasn't been
@@ -261,6 +281,16 @@ public class SkeletonData {
 
 	public void setHeight (float height) {
 		this.height = height;
+	}
+
+	/** Baseline scale factor for applying physics and other effects based on distance to non-scalable properties, such as angle or
+	 * scale. Default is 100. */
+	public float getReferenceScale () {
+		return referenceScale;
+	}
+
+	public void setReferenceScale (float referenceScale) {
+		this.referenceScale = referenceScale;
 	}
 
 	/** The Spine version used to export the skeleton data, or null. */

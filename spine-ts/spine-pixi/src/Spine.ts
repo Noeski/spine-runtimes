@@ -35,6 +35,7 @@ import {
 	ClippingAttachment,
 	Color,
 	MeshAttachment,
+	Physics,
 	RegionAttachment,
 	Skeleton,
 	SkeletonBinary,
@@ -123,7 +124,7 @@ export class Spine extends Container {
 		this.autoUpdate = options?.autoUpdate ?? true;
 		this.slotMeshFactory = options?.slotMeshFactory ?? ((): ISlotMesh => new SlotMesh());
 		this.skeleton.setToSetupPose();
-		this.skeleton.updateWorldTransform();
+		this.skeleton.updateWorldTransform(Physics.update);
 	}
 
 	public update (deltaSeconds: number): void {
@@ -136,7 +137,9 @@ export class Spine extends Container {
 
 	protected internalUpdate (_deltaFrame: number, deltaSeconds?: number): void {
 		// Because reasons, pixi uses deltaFrames at 60fps. We ignore the default deltaFrames and use the deltaSeconds from pixi ticker.
-		this.state.update(deltaSeconds ?? Ticker.shared.deltaMS / 1000);
+		const delta = deltaSeconds ?? Ticker.shared.deltaMS / 1000;
+		this.state.update(delta);
+		this.skeleton.update(delta);
 	}
 
 	public override updateTransform (): void {
@@ -149,7 +152,7 @@ export class Spine extends Container {
 		// if I ever create the linked spines, this will be useful.
 
 		this.state.apply(this.skeleton);
-		this.skeleton.updateWorldTransform();
+		this.skeleton.updateWorldTransform(Physics.update);
 		this.updateGeometry();
 		this.sortChildren();
 	}

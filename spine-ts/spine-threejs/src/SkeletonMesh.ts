@@ -35,6 +35,7 @@ import {
 	Color,
 	MeshAttachment,
 	NumberArrayLike,
+	Physics,
 	RegionAttachment,
 	Skeleton,
 	SkeletonClipping,
@@ -137,7 +138,8 @@ export class SkeletonMesh extends THREE.Object3D {
 
 		state.update(deltaTime);
 		state.apply(skeleton);
-		skeleton.updateWorldTransform();
+		skeleton.update(deltaTime);
+		skeleton.updateWorldTransform(Physics.update);
 
 		this.updateGeometry();
 	}

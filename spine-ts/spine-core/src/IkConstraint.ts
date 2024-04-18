@@ -28,9 +28,9 @@
  *****************************************************************************/
 
 import { Bone } from "./Bone.js";
-import { TransformMode } from "./BoneData.js";
+import { Inherit } from "./BoneData.js";
 import { IkConstraintData } from "./IkConstraintData.js";
-import { Skeleton } from "./Skeleton.js";
+import { Physics, Skeleton } from "./Skeleton.js";
 import { Updatable } from "./Updatable.js";
 import { MathUtils } from "./Utils.js";
 
@@ -90,7 +90,16 @@ export class IkConstraint implements Updatable {
 		return this.active;
 	}
 
-	update () {
+	setToSetupPose () {
+		const data = this.data;
+		this.mix = data.mix;
+		this.softness = data.softness;
+		this.bendDirection = data.bendDirection;
+		this.compress = data.compress;
+		this.stretch = data.stretch;
+	}
+
+	update (physics: Physics) {
 		if (this.mix == 0) return;
 		let target = this.target;
 		let bones = this.bones;
@@ -111,12 +120,12 @@ export class IkConstraint implements Updatable {
 		let pa = p.a, pb = p.b, pc = p.c, pd = p.d;
 		let rotationIK = -bone.ashearX - bone.arotation, tx = 0, ty = 0;
 
-		switch (bone.data.transformMode) {
-			case TransformMode.OnlyTranslation:
+		switch (bone.inherit) {
+			case Inherit.OnlyTranslation:
 				tx = (targetX - bone.worldX) * MathUtils.signum(bone.skeleton.scaleX);
 				ty = (targetY - bone.worldY) * MathUtils.signum(bone.skeleton.scaleY);
 				break;
-			case TransformMode.NoRotationOrReflection:
+			case Inherit.NoRotationOrReflection:
 				let s = Math.abs(pa * pd - pb * pc) / Math.max(0.0001, pa * pa + pc * pc);
 				let sa = pa / bone.skeleton.scaleX;
 				let sc = pc / bone.skeleton.scaleY;
@@ -143,17 +152,20 @@ export class IkConstraint implements Updatable {
 			rotationIK += 360;
 		let sx = bone.ascaleX, sy = bone.ascaleY;
 		if (compress || stretch) {
-			switch (bone.data.transformMode) {
-				case TransformMode.NoScale:
-				case TransformMode.NoScaleOrReflection:
+			switch (bone.inherit) {
+				case Inherit.NoScale:
+				case Inherit.NoScaleOrReflection:
 					tx = targetX - bone.worldX;
 					ty = targetY - bone.worldY;
 			}
-			let b = bone.data.length * sx, dd = Math.sqrt(tx * tx + ty * ty);
-			if ((compress && dd < b) || (stretch && dd > b) && b > 0.0001) {
-				let s = (dd / b - 1) * alpha + 1;
-				sx *= s;
-				if (uniform) sy *= s;
+			const b = bone.data.length * sx;
+			if (b > 0.0001) {
+				const dd = tx * tx + ty * ty;
+				if ((compress && dd < b * b) || (stretch && dd > b * b)) {
+					const s = (Math.sqrt(dd) / b - 1) * alpha + 1;
+					sx *= s;
+					if (uniform) sy *= s;
+				}
 			}
 		}
 		bone.updateWorldTransformWith(bone.ax, bone.ay, bone.arotation + rotationIK * alpha, sx, sy, bone.ashearX,
@@ -163,6 +175,7 @@ export class IkConstraint implements Updatable {
 	/** Applies 2 bone IK. The target is specified in the world coordinate system.
 	 * @param child A direct descendant of the parent bone. */
 	apply2 (parent: Bone, child: Bone, targetX: number, targetY: number, bendDir: number, stretch: boolean, uniform: boolean, softness: number, alpha: number) {
+		if (parent.inherit != Inherit.Normal || child.inherit != Inherit.Normal) return;
 		let px = parent.ax, py = parent.ay, psx = parent.ascaleX, psy = parent.ascaleY, sx = psx, sy = psy, csx = child.ascaleX;
 		let os1 = 0, os2 = 0, s2 = 0;
 		if (psx < 0) {

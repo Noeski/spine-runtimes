@@ -34,6 +34,8 @@ import static com.esotericsoftware.spine.utils.SpineUtils.*;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
+import com.esotericsoftware.spine.Skeleton.Physics;
+
 /** Stores the current pose for a transform constraint. A transform constraint adjusts the world transform of the constrained
  * bones to match that of the target bone.
  * <p>
@@ -57,21 +59,20 @@ public class TransformConstraint implements Updatable {
 		mixScaleX = data.mixScaleX;
 		mixScaleY = data.mixScaleY;
 		mixShearY = data.mixShearY;
+
 		bones = new Array(data.bones.size);
 		for (BoneData boneData : data.bones)
 			bones.add(skeleton.bones.get(boneData.index));
+
 		target = skeleton.bones.get(data.target.index);
 	}
 
 	/** Copy constructor. */
-	public TransformConstraint (TransformConstraint constraint, Skeleton skeleton) {
+	public TransformConstraint (TransformConstraint constraint) {
 		if (constraint == null) throw new IllegalArgumentException("constraint cannot be null.");
-		if (skeleton == null) throw new IllegalArgumentException("skeleton cannot be null.");
 		data = constraint.data;
-		bones = new Array(constraint.bones.size);
-		for (Bone bone : constraint.bones)
-			bones.add(skeleton.bones.get(bone.data.index));
-		target = skeleton.bones.get(constraint.target.data.index);
+		bones = new Array(constraint.bones);
+		target = constraint.target;
 		mixRotate = constraint.mixRotate;
 		mixX = constraint.mixX;
 		mixY = constraint.mixY;
@@ -80,8 +81,18 @@ public class TransformConstraint implements Updatable {
 		mixShearY = constraint.mixShearY;
 	}
 
+	public void setToSetupPose () {
+		TransformConstraintData data = this.data;
+		mixRotate = data.mixRotate;
+		mixX = data.mixX;
+		mixY = data.mixY;
+		mixScaleX = data.mixScaleX;
+		mixScaleY = data.mixScaleY;
+		mixShearY = data.mixShearY;
+	}
+
 	/** Applies the constraint to the constrained bones. */
-	public void update () {
+	public void update (Physics physics) {
 		if (mixRotate == 0 && mixX == 0 && mixY == 0 && mixScaleX == 0 && mixScaleY == 0 && mixShearY == 0) return;
 		if (data.local) {
 			if (data.relative)
@@ -238,11 +249,7 @@ public class TransformConstraint implements Updatable {
 			Bone bone = (Bone)bones[i];
 
 			float rotation = bone.arotation;
-			if (mixRotate != 0) {
-				float r = target.arotation - rotation + data.offsetRotation;
-				r -= (16384 - (int)(16384.499999999996 - r / 360)) * 360;
-				rotation += r * mixRotate;
-			}
+			if (mixRotate != 0) rotation += (target.arotation - rotation + data.offsetRotation) * mixRotate;
 
 			float x = bone.ax, y = bone.ay;
 			x += (target.ax - x + data.offsetX) * mixX;
@@ -255,11 +262,7 @@ public class TransformConstraint implements Updatable {
 				scaleY = (scaleY + (target.ascaleY - scaleY + data.offsetScaleY) * mixScaleY) / scaleY;
 
 			float shearY = bone.ashearY;
-			if (mixShearY != 0) {
-				float r = target.ashearY - shearY + data.offsetShearY;
-				r -= (16384 - (int)(16384.499999999996 - r / 360)) * 360;
-				shearY += r * mixShearY;
-			}
+			if (mixShearY != 0) shearY += (target.ashearY - shearY + data.offsetShearY) * mixShearY;
 
 			bone.updateWorldTransform(x, y, rotation, scaleX, scaleY, bone.ashearX, shearY);
 		}

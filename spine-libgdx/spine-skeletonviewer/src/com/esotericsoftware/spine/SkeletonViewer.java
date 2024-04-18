@@ -52,6 +52,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.esotericsoftware.spine.Animation.MixBlend;
 import com.esotericsoftware.spine.AnimationState.AnimationStateAdapter;
 import com.esotericsoftware.spine.AnimationState.TrackEntry;
+import com.esotericsoftware.spine.Skeleton.Physics;
 import com.esotericsoftware.spine.utils.TwoColorPolygonBatch;
 
 import java.awt.Toolkit;
@@ -78,7 +79,7 @@ public class SkeletonViewer extends ApplicationAdapter {
 	SkeletonData skeletonData;
 	Skeleton skeleton;
 	AnimationState state;
-	FileHandle skeletonFile;
+	FileHandle skeletonFile, lastFile;
 	long skeletonModified, atlasModified;
 	float lastModifiedCheck, reloadTimer;
 	final StringBuilder status = new StringBuilder();
@@ -130,6 +131,7 @@ public class SkeletonViewer extends ApplicationAdapter {
 
 		FileHandle oldSkeletonFile = this.skeletonFile;
 		this.skeletonFile = skeletonFile;
+		lastFile = skeletonFile;
 		reloadTimer = 0;
 
 		try {
@@ -154,10 +156,7 @@ public class SkeletonViewer extends ApplicationAdapter {
 		}
 
 		skeleton = new Skeleton(skeletonData);
-		skeleton.updateWorldTransform();
-		skeleton.setToSetupPose();
-		skeleton = new Skeleton(skeleton); // Tests copy constructors.
-		skeleton.updateWorldTransform();
+		skeleton.updateWorldTransform(Physics.update);
 
 		state = new AnimationState(new AnimationStateData(skeletonData));
 		state.addListener(new AnimationStateAdapter() {
@@ -269,7 +268,8 @@ public class SkeletonViewer extends ApplicationAdapter {
 			delta = Math.min(delta, 0.032f) * ui.speedSlider.getValue();
 			state.update(delta);
 			state.apply(skeleton);
-			skeleton.updateWorldTransform();
+			skeleton.update(delta);
+			skeleton.updateWorldTransform(Physics.update);
 
 			batch.begin();
 			renderer.draw(batch, skeleton);

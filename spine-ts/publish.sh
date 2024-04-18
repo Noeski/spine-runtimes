@@ -20,7 +20,7 @@ sed -i '' "s/$lastVersion/$newVersion/" spine-player/package.json
 sed -i '' "s/$lastVersion/$newVersion/" spine-threejs/package.json
 sed -i '' "s/$lastVersion/$newVersion/" spine-webgl/package.json
 
-rm -rf node_modules
-rm -rf package-lock.json
-npm install
+rm package-lock.json
+rm -rf node_modules/@esotericsoftware
+npm install --workspaces
 npm publish --access public --workspaces

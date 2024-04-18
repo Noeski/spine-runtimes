@@ -33,6 +33,9 @@ import static com.esotericsoftware.spine.utils.SpineUtils.*;
 
 import com.badlogic.gdx.utils.Array;
 
+import com.esotericsoftware.spine.BoneData.Inherit;
+import com.esotericsoftware.spine.Skeleton.Physics;
+
 /** Stores the current pose for an IK constraint. An IK constraint adjusts the rotation of 1 or 2 constrained bones so the tip of
  * the last bone is as close to the target bone as possible.
  * <p>
@@ -60,18 +63,16 @@ public class IkConstraint implements Updatable {
 		bones = new Array(data.bones.size);
 		for (BoneData boneData : data.bones)
 			bones.add(skeleton.bones.get(boneData.index));
+
 		target = skeleton.bones.get(data.target.index);
 	}
 
 	/** Copy constructor. */
-	public IkConstraint (IkConstraint constraint, Skeleton skeleton) {
+	public IkConstraint (IkConstraint constraint) {
 		if (constraint == null) throw new IllegalArgumentException("constraint cannot be null.");
-		if (skeleton == null) throw new IllegalArgumentException("skeleton cannot be null.");
 		data = constraint.data;
-		bones = new Array(constraint.bones.size);
-		for (Bone bone : constraint.bones)
-			bones.add(skeleton.bones.get(bone.data.index));
-		target = skeleton.bones.get(constraint.target.data.index);
+		bones = new Array(constraint.bones);
+		target = constraint.target;
 		mix = constraint.mix;
 		softness = constraint.softness;
 		bendDirection = constraint.bendDirection;
@@ -79,8 +80,17 @@ public class IkConstraint implements Updatable {
 		stretch = constraint.stretch;
 	}
 
+	public void setToSetupPose () {
+		IkConstraintData data = this.data;
+		mix = data.mix;
+		softness = data.softness;
+		bendDirection = data.bendDirection;
+		compress = data.compress;
+		stretch = data.stretch;
+	}
+
 	/** Applies the constraint to the constrained bones. */
-	public void update () {
+	public void update (Physics physics) {
 		if (mix == 0) return;
 		Bone target = this.target;
 		Object[] bones = this.bones.items;
@@ -180,7 +190,7 @@ public class IkConstraint implements Updatable {
 		Bone p = bone.parent;
 		float pa = p.a, pb = p.b, pc = p.c, pd = p.d;
 		float rotationIK = -bone.ashearX - bone.arotation, tx, ty;
-		switch (bone.data.transformMode) {
+		switch (bone.inherit) {
 		case onlyTranslation:
 			tx = (targetX - bone.worldX) * Math.signum(bone.skeleton.scaleX);
 			ty = (targetY - bone.worldY) * Math.signum(bone.skeleton.scaleY);
@@ -191,7 +201,7 @@ public class IkConstraint implements Updatable {
 			float sc = pc / bone.skeleton.scaleY;
 			pb = -sc * s * bone.skeleton.scaleX;
 			pd = sa * s * bone.skeleton.scaleY;
-			rotationIK += atan2(sc, sa) * radDeg;
+			rotationIK += atan2Deg(sc, sa);
 			// Fall through.
 		default:
 			float x = targetX - p.worldX, y = targetY - p.worldY;
@@ -204,7 +214,7 @@ public class IkConstraint implements Updatable {
 				ty = (y * pa - x * pc) / d - bone.ay;
 			}
 		}
-		rotationIK += atan2(ty, tx) * radDeg;
+		rotationIK += atan2Deg(ty, tx);
 		if (bone.ascaleX < 0) rotationIK += 180;
 		if (rotationIK > 180)
 			rotationIK -= 360;
@@ -212,17 +222,20 @@ public class IkConstraint implements Updatable {
 			rotationIK += 360;
 		float sx = bone.ascaleX, sy = bone.ascaleY;
 		if (compress || stretch) {
-			switch (bone.data.transformMode) {
+			switch (bone.inherit) {
 			case noScale:
 			case noScaleOrReflection:
 				tx = targetX - bone.worldX;
 				ty = targetY - bone.worldY;
 			}
-			float b = bone.data.length * sx, dd = (float)Math.sqrt(tx * tx + ty * ty);
-			if ((compress && dd < b) || (stretch && dd > b) && b > 0.0001f) {
-				float s = (dd / b - 1) * alpha + 1;
-				sx *= s;
-				if (uniform) sy *= s;
+			float b = bone.data.length * sx;
+			if (b > 0.0001f) {
+				float dd = tx * tx + ty * ty;
+				if ((compress && dd < b * b) || (stretch && dd > b * b)) {
+					float s = ((float)Math.sqrt(dd) / b - 1) * alpha + 1;
+					sx *= s;
+					if (uniform) sy *= s;
+				}
 			}
 		}
 		bone.updateWorldTransform(bone.ax, bone.ay, bone.arotation + rotationIK * alpha, sx, sy, bone.ashearX, bone.ashearY);
@@ -234,6 +247,7 @@ public class IkConstraint implements Updatable {
 		float softness, float alpha) {
 		if (parent == null) throw new IllegalArgumentException("parent cannot be null.");
 		if (child == null) throw new IllegalArgumentException("child cannot be null.");
+		if (parent.inherit != Inherit.normal || child.inherit != Inherit.normal) return;
 		float px = parent.ax, py = parent.ay, psx = parent.ascaleX, psy = parent.ascaleY, sx = psx, sy = psy, csx = child.ascaleX;
 		int os1, os2, s2;
 		if (psx < 0) {

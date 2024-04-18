@@ -30,6 +30,7 @@
 import Scene.SceneManager;
 import openfl.utils.Assets;
 import spine.SkeletonData;
+import spine.Physics;
 import spine.animation.AnimationStateData;
 import spine.atlas.TextureAtlas;
 import spine.starling.SkeletonSprite;
@@ -49,7 +50,7 @@ class VineExample extends Scene {
 		animationStateData.defaultMix = 0.25;
 
 		var skeletonSprite = new SkeletonSprite(skeletondata, animationStateData);
-		skeletonSprite.skeleton.updateWorldTransform();
+		skeletonSprite.skeleton.updateWorldTransform(Physics.none);
 		var bounds = skeletonSprite.skeleton.getBounds();
 		skeletonSprite.scale = Starling.current.stage.stageWidth / bounds.width;
 		skeletonSprite.x = Starling.current.stage.stageWidth / 2;
@@ -64,7 +65,8 @@ class VineExample extends Scene {
 	public function onTouch(e:TouchEvent) {
 		var touch = e.getTouch(this);
 		if (touch != null && touch.phase == TouchPhase.ENDED) {
-			SceneManager.getInstance().switchScene(new BasicExample());
+			SceneManager.getInstance().switchScene(new SackExample());
 		}
 	}
 }
+

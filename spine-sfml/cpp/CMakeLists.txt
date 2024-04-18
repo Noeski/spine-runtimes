@@ -1,10 +1,12 @@
 #
-# First download and extract SFML 2.5.1 for the respective OS we are on
+# First download and extract SFML 2.6.1 for the respective OS we are on
 #
 set(DEPS_DIR "${CMAKE_CURRENT_LIST_DIR}/dependencies/")
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(SFML_URL "https://www.sfml-dev.org/files/SFML-2.5.1-macOS-clang.tar.gz")
-    set(SFML_DIR ${DEPS_DIR}/SFML-2.5.1-macos-clang)
+	set(CMAKE_OSX_ARCHITECTURES x86_64)
+	set(ONLY_ACTIVE_ARCH NO)
+    set(SFML_URL "https://www.sfml-dev.org/files/SFML-2.6.1-macOS-clang-64-bit.tar.gz")
+    set(SFML_DIR ${DEPS_DIR}/SFML-2.6.1-macOS-clang-64-bit)
 	if (NOT EXISTS "${SFML_DIR}")
 		message("Downloading SFML for Mac OS X")
 		file(DOWNLOAD "${SFML_URL}" "${DEPS_DIR}/sfml.tar.gz")
@@ -12,7 +14,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 			COMMAND ${CMAKE_COMMAND} -E tar xzf  ${DEPS_DIR}/sfml.tar.gz
 			WORKING_DIRECTORY ${DEPS_DIR}
     	)
-		# copy freetype over to Frameworks/ so rpath resoultion works
+		# copy freetype over to Frameworks/ so rpath resolution works
 		execute_process(
 				COMMAND ${CMAKE_COMMAND} -E copy_directory ${SFML_DIR}/extlibs/freetype.framework ${SFML_DIR}/Frameworks/freetype.framework
 				WORKING_DIRECTORY ${SFML_DIR}
@@ -30,10 +32,10 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     	)
 	endif()
 else()
-	set(SFML_URL "https://www.sfml-dev.org/files/SFML-2.5.1-windows-vc14-32-bit.zip")
-	set(SFML_DIR ${DEPS_DIR}/SFML-2.5.1)
+	set(SFML_URL "https://www.sfml-dev.org/files/SFML-2.6.1-windows-vc17-64-bit.zip")
+	set(SFML_DIR ${DEPS_DIR}/SFML-2.6.1)
 	if (NOT EXISTS ${SFML_DIR})
-		message("Downloading SFML for Windows 32-bit")
+		message("Downloading SFML for Windows 64-bit")
 		file(DOWNLOAD "${SFML_URL}" "${DEPS_DIR}/sfml.zip")
 		execute_process(
 			COMMAND ${CMAKE_COMMAND} -E tar x  ${DEPS_DIR}/sfml.zip
@@ -47,7 +49,7 @@ if(MSVC)
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_CRT_SECURE_NO_WARNINGS")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_CRT_SECURE_NO_WARNINGS")
 else()
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic -std=c89")
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic -std=c99")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wnon-virtual-dtor -pedantic -std=c++11 -fno-exceptions -fno-rtti")
 endif()
 
@@ -86,7 +88,6 @@ else()
 	target_link_libraries(spine-sfml-cpp-example ${SFML_LIBS}/sfml-window-s-d.lib)
 	target_link_libraries(spine-sfml-cpp-example ${SFML_LIBS}/sfml-system-s-d.lib)
 	target_link_libraries(spine-sfml-cpp-example ${SFML_LIBS}/freetype.lib)
-	target_link_libraries(spine-sfml-cpp-example ${SFML_LIBS}/jpeg.lib)
 	target_link_libraries(spine-sfml-cpp-example opengl32)
 	target_link_libraries(spine-sfml-cpp-example gdi32)
 	target_link_libraries(spine-sfml-cpp-example winmm)
@@ -95,7 +96,6 @@ else()
 	target_link_libraries(spine-sfml-cpp-testbed ${SFML_LIBS}/sfml-window-s-d.lib)
 	target_link_libraries(spine-sfml-cpp-testbed ${SFML_LIBS}/sfml-system-s-d.lib)
 	target_link_libraries(spine-sfml-cpp-testbed ${SFML_LIBS}/freetype.lib)
-	target_link_libraries(spine-sfml-cpp-testbed ${SFML_LIBS}/jpeg.lib)
 	target_link_libraries(spine-sfml-cpp-testbed opengl32)
 	target_link_libraries(spine-sfml-cpp-testbed gdi32)
 	target_link_libraries(spine-sfml-cpp-testbed winmm)

@@ -30,6 +30,8 @@
 using System;
 
 namespace Spine {
+	using Physics = Skeleton.Physics;
+
 	/// <summary>
 	/// <para>
 	/// Stores the current pose for a transform constraint. A transform constraint adjusts the world transform of the constrained
@@ -55,6 +57,7 @@ namespace Spine {
 			mixScaleX = data.mixScaleX;
 			mixScaleY = data.mixScaleY;
 			mixShearY = data.mixShearY;
+
 			bones = new ExposedList<Bone>();
 			foreach (BoneData boneData in data.bones)
 				bones.Add(skeleton.bones.Items[boneData.index]);
@@ -63,14 +66,12 @@ namespace Spine {
 		}
 
 		/// <summary>Copy constructor.</summary>
-		public TransformConstraint (TransformConstraint constraint, Skeleton skeleton) {
+		public TransformConstraint (TransformConstraint constraint) {
 			if (constraint == null) throw new ArgumentNullException("constraint cannot be null.");
-			if (skeleton == null) throw new ArgumentNullException("skeleton cannot be null.");
 			data = constraint.data;
 			bones = new ExposedList<Bone>(constraint.Bones.Count);
-			foreach (Bone bone in constraint.Bones)
-				bones.Add(skeleton.Bones.Items[bone.data.index]);
-			target = skeleton.Bones.Items[constraint.target.data.index];
+			bones.AddRange(constraint.Bones);
+			target = constraint.target;
 			mixRotate = constraint.mixRotate;
 			mixX = constraint.mixX;
 			mixY = constraint.mixY;
@@ -79,7 +80,17 @@ namespace Spine {
 			mixShearY = constraint.mixShearY;
 		}
 
-		public void Update () {
+		public void SetToSetupPose () {
+			TransformConstraintData data = this.data;
+			mixRotate = data.mixRotate;
+			mixX = data.mixX;
+			mixY = data.mixY;
+			mixScaleX = data.mixScaleX;
+			mixScaleY = data.mixScaleY;
+			mixShearY = data.mixShearY;
+		}
+
+		public void Update (Physics physics) {
 			if (mixRotate == 0 && mixX == 0 && mixY == 0 && mixScaleX == 0 && mixScaleY == 0 && mixShearY == 0) return;
 			if (data.local) {
 				if (data.relative)
@@ -236,11 +247,7 @@ namespace Spine {
 				Bone bone = bones[i];
 
 				float rotation = bone.arotation;
-				if (mixRotate != 0) {
-					float r = target.arotation - rotation + data.offsetRotation;
-					r -= (16384 - (int)(16384.499999999996 - r / 360)) * 360;
-					rotation += r * mixRotate;
-				}
+				if (mixRotate != 0) rotation += (target.arotation - rotation + data.offsetRotation) * mixRotate;
 
 				float x = bone.ax, y = bone.ay;
 				x += (target.ax - x + data.offsetX) * mixX;
@@ -253,11 +260,7 @@ namespace Spine {
 					scaleY = (scaleY + (target.ascaleY - scaleY + data.offsetScaleY) * mixScaleY) / scaleY;
 
 				float shearY = bone.ashearY;
-				if (mixShearY != 0) {
-					float r = target.ashearY - shearY + data.offsetShearY;
-					r -= (16384 - (int)(16384.499999999996 - r / 360)) * 360;
-					shearY += r * mixShearY;
-				}
+				if (mixShearY != 0) shearY += (target.ashearY - shearY + data.offsetShearY) * mixShearY;
 
 				bone.UpdateWorldTransform(x, y, rotation, scaleX, scaleY, bone.ashearX, shearY);
 			}

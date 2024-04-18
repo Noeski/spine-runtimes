@@ -95,11 +95,11 @@ void testcase(void func(spSkeletonData *skeletonData, spAtlas *atlas),
 			  float scale) {
 	spAtlas *atlas = spAtlas_createFromFile(atlasName, 0);
 
-	spSkeletonData *skeletonData = readSkeletonBinaryData(binaryName, atlas, scale);
+	spSkeletonData *skeletonData = readSkeletonJsonData(jsonName, atlas, scale);
 	func(skeletonData, atlas);
 	spSkeletonData_dispose(skeletonData);
 
-	skeletonData = readSkeletonJsonData(jsonName, atlas, scale);
+	skeletonData = readSkeletonBinaryData(binaryName, atlas, scale);
 	func(skeletonData, atlas);
 	spSkeletonData_dispose(skeletonData);
 
@@ -126,7 +126,7 @@ void spineboy(spSkeletonData *skeletonData, spAtlas *atlas) {
 
 	skeleton->x = 320;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spSlot *headSlot = spSkeleton_findSlot(skeleton, "head");
 
@@ -156,7 +156,7 @@ void spineboy(spSkeletonData *skeletonData, spAtlas *atlas) {
 			headSlot->color.b = 1;
 		}
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -208,7 +208,7 @@ void ikDemo(spSkeletonData *skeletonData, spAtlas *atlas) {
 		// then calculate the world transforms of every bone.
 		// This is needed so we can call Bone#worldToLocal()
 		// later.
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		// Position the "crosshair" bone at the mouse
 		// location. We do this before calling
@@ -231,7 +231,7 @@ void ikDemo(spSkeletonData *skeletonData, spAtlas *atlas) {
 		// Calculate final world transform with the
 		// crosshair bone set to the mouse cursor
 		// position.
-		spSkeleton_updateWorldTransform(drawable->skeleton);
+		spSkeleton_updateWorldTransform(drawable->skeleton, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -250,7 +250,7 @@ void goblins(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton_setSlotsToSetupPose(skeleton);
 	skeleton->x = 320;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "walk", true);
 
@@ -265,7 +265,7 @@ void goblins(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -282,7 +282,7 @@ void raptor(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton *skeleton = drawable->skeleton;
 	skeleton->x = 320;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "walk", true);
 	spAnimationState_addAnimationByName(drawable->state, 1, "gun-grab", false, 2);
@@ -298,7 +298,7 @@ void raptor(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -315,7 +315,7 @@ void tank(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton *skeleton = drawable->skeleton;
 	skeleton->x = 500;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "drive", true);
 
@@ -330,7 +330,7 @@ void tank(spSkeletonData *skeletonData, spAtlas *atlas) {
 
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 		window.clear();
 		window.draw(*drawable);
 		window.display();
@@ -346,7 +346,7 @@ void vine(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton *skeleton = drawable->skeleton;
 	skeleton->x = 320;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "grow", true);
 
@@ -361,7 +361,7 @@ void vine(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -378,7 +378,7 @@ void stretchyman(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton *skeleton = drawable->skeleton;
 	skeleton->x = 100;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "sneak", true);
 
@@ -393,7 +393,7 @@ void stretchyman(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -412,7 +412,7 @@ void coin(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton *skeleton = drawable->skeleton;
 	skeleton->x = 320;
 	skeleton->y = 320;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 	spAnimationState_setAnimationByName(drawable->state, 0, "animation", true);
 
 	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - vine");
@@ -427,7 +427,7 @@ void coin(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -446,7 +446,7 @@ void dragon(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton *skeleton = drawable->skeleton;
 	skeleton->x = 320;
 	skeleton->y = 320;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 	spAnimationState_setAnimationByName(drawable->state, 0, "flying", true);
 
 	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - dragon");
@@ -461,7 +461,7 @@ void dragon(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -478,7 +478,7 @@ void owl(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkeleton *skeleton = drawable->skeleton;
 	skeleton->x = 320;
 	skeleton->y = 400;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "idle", true);
 	spAnimationState_setAnimationByName(drawable->state, 1, "blink", true);
@@ -518,7 +518,7 @@ void owl(spSkeletonData *skeletonData, spAtlas *atlas) {
 		deltaClock.restart();
 
 		spSkeleton_setToSetupPose(drawable->skeleton);
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -541,7 +541,7 @@ void test(spSkeletonData *skeletonData, spAtlas *atlas) {
 	for (int i = 0; i < 1; i++) {
 		spAnimationState_update(animState, d);
 		spAnimationState_apply(animState, skeleton);
-		spSkeleton_updateWorldTransform(skeleton);
+		spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 		for (int ii = 0; ii < skeleton->bonesCount; ii++) {
 			spBone *bone = skeleton->bones[ii];
 			printf("%s %f %f %f %f %f %f\n", bone->data->name, bone->a, bone->b, bone->c, bone->d, bone->worldX, bone->worldY);
@@ -569,7 +569,7 @@ void testSkinsApi(spSkeletonData *skeletonData, spAtlas *atlas) {
 
 	skeleton->x = 320;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "walk", true);
 
@@ -584,7 +584,7 @@ void testSkinsApi(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -622,7 +622,7 @@ void testMixAndMatch(spSkeletonData *skeletonData, spAtlas *atlas) {
 
 	skeleton->x = 320;
 	skeleton->y = 590;
-	spSkeleton_updateWorldTransform(skeleton);
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
 
 	spAnimationState_setAnimationByName(drawable->state, 0, "dance", true);
 
@@ -637,7 +637,7 @@ void testMixAndMatch(spSkeletonData *skeletonData, spAtlas *atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
-		drawable->update(delta);
+		drawable->update(delta, SP_PHYSICS_UPDATE);
 
 		window.clear();
 		window.draw(*drawable);
@@ -648,7 +648,147 @@ void testMixAndMatch(spSkeletonData *skeletonData, spAtlas *atlas) {
 	spSkin_dispose(skin);
 }
 
+void cloudpot(spSkeletonData *skeletonData, spAtlas *atlas) {
+	UNUSED(atlas);
+
+	SkeletonDrawable *drawable = new SkeletonDrawable(skeletonData);
+	drawable->timeScale = 1;
+	drawable->setUsePremultipliedAlpha(true);
+
+	spSkeleton *skeleton = drawable->skeleton;
+	skeleton->x = 320;
+	skeleton->y = 480;
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
+	spAnimationState_setAnimationByName(drawable->state, 0, "playing-in-the-rain", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - cloudpot");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event))
+			if (event.type == sf::Event::Closed) window.close();
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable->update(delta, SP_PHYSICS_UPDATE);
+
+		window.clear();
+		window.draw(*drawable);
+		window.display();
+	}
+}
+
+void sack(spSkeletonData *skeletonData, spAtlas *atlas) {
+	UNUSED(atlas);
+
+
+	SkeletonDrawable *drawable = new SkeletonDrawable(skeletonData);
+	drawable->timeScale = 1;
+	drawable->setUsePremultipliedAlpha(true);
+
+	spSkeleton *skeleton = drawable->skeleton;
+	skeleton->x = 320;
+	skeleton->y = 480;
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
+	spAnimationState_setAnimationByName(drawable->state, 0, "walk", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - sack");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event))
+			if (event.type == sf::Event::Closed) window.close();
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable->update(delta, SP_PHYSICS_UPDATE);
+
+		window.clear();
+		window.draw(*drawable);
+		window.display();
+	}
+}
+
+void snowglobe(spSkeletonData *skeletonData, spAtlas *atlas) {
+	UNUSED(atlas);
+
+
+	SkeletonDrawable *drawable = new SkeletonDrawable(skeletonData);
+	drawable->timeScale = 1;
+	drawable->setUsePremultipliedAlpha(true);
+
+	spSkeleton *skeleton = drawable->skeleton;
+	skeleton->x = 320;
+	skeleton->y = 480;
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
+	spAnimationState_setAnimationByName(drawable->state, 0, "shake", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - snowglobe");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event))
+			if (event.type == sf::Event::Closed) window.close();
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable->update(delta, SP_PHYSICS_UPDATE);
+
+		window.clear();
+		window.draw(*drawable);
+		window.display();
+	}
+}
+
+void celestialCircus(spSkeletonData *skeletonData, spAtlas *atlas) {
+	UNUSED(atlas);
+
+
+	SkeletonDrawable *drawable = new SkeletonDrawable(skeletonData);
+	drawable->timeScale = 1;
+	drawable->setUsePremultipliedAlpha(true);
+
+	spSkeleton *skeleton = drawable->skeleton;
+	skeleton->x = 320;
+	skeleton->y = 480;
+	spSkeleton_updateWorldTransform(skeleton, SP_PHYSICS_UPDATE);
+	spAnimationState_setAnimationByName(drawable->state, 0, "swing", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - celestrial circus");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event))
+			if (event.type == sf::Event::Closed) window.close();
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable->update(delta, SP_PHYSICS_UPDATE);
+
+		window.clear();
+		window.draw(*drawable);
+		window.display();
+	}
+}
+
 int main() {
+	testcase(cloudpot, "data/cloud-pot.json", "data/cloud-pot.skel", "data/cloud-pot-pma.atlas", 0.2);
+	testcase(sack, "data/sack-pro.json", "data/sack-pro.skel", "data/sack-pma.atlas", 0.2f);
+	testcase(celestialCircus, "data/celestial-circus-pro.json", "data/celestial-circus-pro.skel", "data/celestial-circus-pma.atlas", 0.2f);
+	testcase(snowglobe, "data/snowglobe-pro.json", "data/snowglobe-pro.skel", "data/snowglobe-pma.atlas", 0.2f);
+	testcase(raptor, "data/raptor-pro.json", "data/raptor-pro.skel", "data/raptor-pma.atlas", 0.5f);
 	testcase(dragon, "data/dragon-ess.json", "data/dragon-ess.skel", "data/dragon-pma.atlas", 0.6f);
 	testcase(ikDemo, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.6f);
 	testcase(spineboy, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.6f);
@@ -658,7 +798,6 @@ int main() {
 	testcase(owl, "data/owl-pro.json", "data/owl-pro.skel", "data/owl-pma.atlas", 0.5f);
 	testcase(vine, "data/vine-pro.json", "data/vine-pro.skel", "data/vine-pma.atlas", 0.5f);
 	testcase(tank, "data/tank-pro.json", "data/tank-pro.skel", "data/tank-pma.atlas", 0.2f);
-	testcase(raptor, "data/raptor-pro.json", "data/raptor-pro.skel", "data/raptor-pma.atlas", 0.5f);
 	testcase(goblins, "data/goblins-pro.json", "data/goblins-pro.skel", "data/goblins-pma.atlas", 1.4f);
 	testcase(stretchyman, "data/stretchyman-pro.json", "data/stretchyman-pro.skel", "data/stretchyman-pma.atlas", 0.6f);
 	testcase(testSkinsApi, "data/goblins-pro.json", "data/goblins-pro.skel", "data/goblins-pma.atlas", 1.4f);

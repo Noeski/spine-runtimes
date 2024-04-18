@@ -277,31 +277,31 @@ public class SkeletonRendererDebug {
 	}
 
 	public void setRegionAttachments (boolean regionAttachments) {
-		this.drawRegionAttachments = regionAttachments;
+		drawRegionAttachments = regionAttachments;
 	}
 
 	public void setBoundingBoxes (boolean boundingBoxes) {
-		this.drawBoundingBoxes = boundingBoxes;
+		drawBoundingBoxes = boundingBoxes;
 	}
 
 	public void setMeshHull (boolean meshHull) {
-		this.drawMeshHull = meshHull;
+		drawMeshHull = meshHull;
 	}
 
 	public void setMeshTriangles (boolean meshTriangles) {
-		this.drawMeshTriangles = meshTriangles;
+		drawMeshTriangles = meshTriangles;
 	}
 
 	public void setPaths (boolean paths) {
-		this.drawPaths = paths;
+		drawPaths = paths;
 	}
 
 	public void setPoints (boolean points) {
-		this.drawPoints = points;
+		drawPoints = points;
 	}
 
 	public void setClipping (boolean clipping) {
-		this.drawClipping = clipping;
+		drawClipping = clipping;
 	}
 
 	public void setPremultipliedAlpha (boolean premultipliedAlpha) {

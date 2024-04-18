@@ -1,4 +1,9 @@
+<!DOCTYPE html>
 <html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
 <script src="../dist/iife/spine-webgl.js"></script>
 <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
 <style>
@@ -219,7 +224,7 @@
 
 		function calculateSetupPoseBounds(skeleton) {
 			skeleton.setToSetupPose();
-			skeleton.updateWorldTransform();
+			skeleton.updateWorldTransform(spine.Physics.update);
 			let offset = new spine.Vector2();
 			let size = new spine.Vector2();
 			skeleton.getBounds(offset, size, []);
@@ -316,7 +321,7 @@
 			let premultipliedAlpha = skeletons[activeSkeleton][format].premultipliedAlpha;
 			state.update(delta);
 			state.apply(skeleton);
-			skeleton.updateWorldTransform();
+			skeleton.updateWorldTransform(spine.Physics.update);
 
 			// Bind the shader and set the texture and model-view-projection matrix.
 			shader.bind();

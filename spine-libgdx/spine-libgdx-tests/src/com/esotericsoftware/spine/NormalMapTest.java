@@ -58,6 +58,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 
 import com.esotericsoftware.spine.Animation.MixBlend;
 import com.esotericsoftware.spine.Animation.MixDirection;
+import com.esotericsoftware.spine.Skeleton.Physics;
 
 /** Demonstrates simplistic usage of lighting with normal maps.
  * <p>
@@ -110,7 +111,7 @@ public class NormalMapTest extends ApplicationAdapter {
 		skeleton = new Skeleton(skeleton);
 		skeleton.setX(ui.prefs.getFloat("x", Gdx.graphics.getWidth() / 2));
 		skeleton.setY(ui.prefs.getFloat("y", Gdx.graphics.getHeight() / 4));
-		skeleton.updateWorldTransform();
+		skeleton.updateWorldTransform(Physics.update);
 
 		Gdx.input.setInputProcessor(new InputMultiplexer(ui.stage, new InputAdapter() {
 			public boolean touchDown (int screenX, int screenY, int pointer, int button) {
@@ -134,9 +135,11 @@ public class NormalMapTest extends ApplicationAdapter {
 
 	public void render () {
 		float lastTime = time;
-		time += Gdx.graphics.getDeltaTime();
+		float delta = Gdx.graphics.getDeltaTime();
+		time += delta;
 		if (animation != null) animation.apply(skeleton, lastTime, time, true, null, 1, MixBlend.first, MixDirection.in);
-		skeleton.updateWorldTransform();
+		skeleton.update(delta);
+		skeleton.updateWorldTransform(Physics.update);
 
 		lightPosition.x = Gdx.input.getX();
 		lightPosition.y = (Gdx.graphics.getHeight() - 1 - Gdx.input.getY());

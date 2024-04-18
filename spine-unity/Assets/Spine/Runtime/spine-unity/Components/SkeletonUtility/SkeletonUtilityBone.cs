@@ -130,10 +130,11 @@ namespace Spine.Unity {
 				switch (phase) {
 				case UpdatePhase.Local:
 					if (position)
-						thisTransform.localPosition = new Vector3(bone.X * positionScale, bone.Y * positionScale, 0);
+						thisTransform.localPosition = new Vector3(bone.X * positionScale, bone.Y * positionScale,
+							zPosition ? 0 : thisTransform.localPosition.z);
 
 					if (rotation) {
-						if (bone.Data.TransformMode.InheritsRotation()) {
+						if (bone.Data.Inherit.InheritsRotation()) {
 							thisTransform.localRotation = Quaternion.Euler(0, 0, bone.Rotation);
 						} else {
 							Vector3 euler = skeletonTransform.rotation.eulerAngles;
@@ -149,10 +150,11 @@ namespace Spine.Unity {
 				case UpdatePhase.World:
 				case UpdatePhase.Complete:
 					if (position)
-						thisTransform.localPosition = new Vector3(bone.AX * positionScale, bone.AY * positionScale, 0);
+						thisTransform.localPosition = new Vector3(bone.AX * positionScale, bone.AY * positionScale,
+							zPosition ? 0 : thisTransform.localPosition.z);
 
 					if (rotation) {
-						if (bone.Data.TransformMode.InheritsRotation()) {
+						if (bone.Data.Inherit.InheritsRotation()) {
 							thisTransform.localRotation = Quaternion.Euler(0, 0, bone.AppliedRotation);
 						} else {
 							Vector3 euler = skeletonTransform.rotation.eulerAngles;
@@ -220,7 +222,7 @@ namespace Spine.Unity {
 		}
 
 		public static bool BoneTransformModeIncompatible (Bone bone) {
-			return !bone.Data.TransformMode.InheritsScale();
+			return !bone.Data.Inherit.InheritsScale();
 		}
 
 		public void AddBoundingBox (string skinName, string slotName, string attachmentName) {

@@ -32,6 +32,7 @@ package spine;
 class MathUtils {
 	static public var PI:Float = Math.PI;
 	static public var PI2:Float = Math.PI * 2;
+	static public var invPI2 = 1 / MathUtils.PI2;
 	static public var radDeg:Float = 180 / Math.PI;
 	static public var degRad:Float = Math.PI / 180;
 
@@ -41,6 +42,10 @@ class MathUtils {
 
 	static public function sinDeg(degrees:Float):Float {
 		return Math.sin(degrees * degRad);
+	}
+
+	static public function atan2Deg (y:Float, x:Float):Float {
+		return Math.atan2(y, x) * MathUtils.degRad;
 	}
 
 	static public function clamp(value:Float, min:Float, max:Float):Float {

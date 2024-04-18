@@ -27,11 +27,11 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import { Animation, Timeline, AttachmentTimeline, RGBATimeline, RGBTimeline, AlphaTimeline, RGBA2Timeline, RGB2Timeline, RotateTimeline, TranslateTimeline, TranslateXTimeline, TranslateYTimeline, ScaleTimeline, ScaleXTimeline, ScaleYTimeline, ShearTimeline, ShearXTimeline, ShearYTimeline, IkConstraintTimeline, TransformConstraintTimeline, PathConstraintPositionTimeline, PathConstraintSpacingTimeline, PathConstraintMixTimeline, DeformTimeline, DrawOrderTimeline, EventTimeline, CurveTimeline1, CurveTimeline2, CurveTimeline } from "./Animation.js";
+import { Animation, Timeline, InheritTimeline, AttachmentTimeline, RGBATimeline, RGBTimeline, AlphaTimeline, RGBA2Timeline, RGB2Timeline, RotateTimeline, TranslateTimeline, TranslateXTimeline, TranslateYTimeline, ScaleTimeline, ScaleXTimeline, ScaleYTimeline, ShearTimeline, ShearXTimeline, ShearYTimeline, IkConstraintTimeline, TransformConstraintTimeline, PathConstraintPositionTimeline, PathConstraintSpacingTimeline, PathConstraintMixTimeline, DeformTimeline, DrawOrderTimeline, EventTimeline, CurveTimeline1, CurveTimeline2, CurveTimeline, PhysicsConstraintResetTimeline, PhysicsConstraintInertiaTimeline, PhysicsConstraintStrengthTimeline, PhysicsConstraintDampingTimeline, PhysicsConstraintMassTimeline, PhysicsConstraintWindTimeline, PhysicsConstraintGravityTimeline, PhysicsConstraintMixTimeline } from "./Animation.js";
 import { VertexAttachment, Attachment } from "./attachments/Attachment.js";
 import { AttachmentLoader } from "./attachments/AttachmentLoader.js";
 import { MeshAttachment } from "./attachments/MeshAttachment.js";
-import { BoneData, TransformMode } from "./BoneData.js";
+import { BoneData, Inherit } from "./BoneData.js";
 import { EventData } from "./EventData.js";
 import { Event } from "./Event.js";
 import { IkConstraintData } from "./IkConstraintData.js";
@@ -44,6 +44,7 @@ import { Utils, Color, NumberArrayLike } from "./Utils.js";
 import { Sequence, SequenceMode } from "./attachments/Sequence.js";
 import { SequenceTimeline } from "./Animation.js";
 import { HasTextureRegion } from "./attachments/HasTextureRegion.js";
+import { PhysicsConstraintData } from "./PhysicsConstraintData.js";
 
 /** Loads skeleton data in the Spine JSON format.
  *
@@ -78,8 +79,10 @@ export class SkeletonJson {
 			skeletonData.y = skeletonMap.y;
 			skeletonData.width = skeletonMap.width;
 			skeletonData.height = skeletonMap.height;
+			skeletonData.referenceScale = getValue(skeletonMap, "referenceScale", 100) * scale;
 			skeletonData.fps = skeletonMap.fps;
-			skeletonData.imagesPath = skeletonMap.images;
+			skeletonData.imagesPath = skeletonMap.images ?? null;
+			skeletonData.audioPath = skeletonMap.audio ?? null;
 		}
 
 		// Bones
@@ -99,7 +102,7 @@ export class SkeletonJson {
 				data.scaleY = getValue(boneMap, "scaleY", 1);
 				data.shearX = getValue(boneMap, "shearX", 0);
 				data.shearY = getValue(boneMap, "shearY", 0);
-				data.transformMode = Utils.enumValue(TransformMode, getValue(boneMap, "transform", "Normal"));
+				data.inherit = Utils.enumValue(Inherit, getValue(boneMap, "inherit", "Normal"));
 				data.skinRequired = getValue(boneMap, "skin", false);
 
 				let color = getValue(boneMap, "color", null);
@@ -113,9 +116,16 @@ export class SkeletonJson {
 		if (root.slots) {
 			for (let i = 0; i < root.slots.length; i++) {
 				let slotMap = root.slots[i];
+				let path: string | null = null;
+				let slotName = slotMap.name;
+				const slash = slotName.lastIndexOf('/');
+				if (slash != -1) {
+					path = slotName.substring(0, slash);
+					slotName = slotName.substring(slash + 1);
+				}
 				let boneData = skeletonData.findBone(slotMap.bone);
-				if (!boneData) throw new Error(`Couldn't find bone ${slotMap.bone} for slot ${slotMap.name}`);
-				let data = new SlotData(skeletonData.slots.length, slotMap.name, boneData);
+				if (!boneData) throw new Error(`Couldn't find bone ${slotMap.bone} for slot ${slotName}`);
+				let data = new SlotData(skeletonData.slots.length, slotName, boneData);
 
 				let color: string = getValue(slotMap, "color", null);
 				if (color) data.color.setFromString(color);
@@ -125,6 +135,8 @@ export class SkeletonJson {
 
 				data.attachmentName = getValue(slotMap, "attachment", null);
 				data.blendMode = Utils.enumValue(BlendMode, getValue(slotMap, "blend", "normal"));
+				data.visible = getValue(slotMap, "visible", true);
+				data.path = path;
 				skeletonData.slots.push(data);
 			}
 		}
@@ -234,6 +246,45 @@ export class SkeletonJson {
 			}
 		}
 
+		// Physics constraints.
+		if (root.physics) {
+			for (let i = 0; i < root.physics.length; i++) {
+				const constraintMap = root.physics[i];
+				const data = new PhysicsConstraintData(constraintMap.name);
+				data.order = getValue(constraintMap, "order", 0);
+				data.skinRequired = getValue(constraintMap, "skin", false);
+
+				const boneName = constraintMap.bone;
+				const bone = skeletonData.findBone(boneName);
+				if (bone == null) throw new Error("Physics bone not found: " + boneName);
+				data.bone = bone;
+
+				data.x = getValue(constraintMap, "x", 0);
+				data.y = getValue(constraintMap, "y", 0);
+				data.rotate = getValue(constraintMap, "rotate", 0);
+				data.scaleX = getValue(constraintMap, "scaleX", 0);
+				data.shearX = getValue(constraintMap, "shearX", 0);
+				data.limit = getValue(constraintMap, "limit", 5000) * scale;
+				data.step = 1 / getValue(constraintMap, "fps", 60);
+				data.inertia = getValue(constraintMap, "inertia", 1);
+				data.strength = getValue(constraintMap, "strength", 100);
+				data.damping = getValue(constraintMap, "damping", 1);
+				data.massInverse = 1 / getValue(constraintMap, "mass", 1);
+				data.wind = getValue(constraintMap, "wind", 0);
+				data.gravity = getValue(constraintMap, "gravity", 0);
+				data.mix = getValue(constraintMap, "mix", 1);
+				data.inertiaGlobal = getValue(constraintMap, "inertiaGlobal", false);
+				data.strengthGlobal = getValue(constraintMap, "strengthGlobal", false);
+				data.dampingGlobal = getValue(constraintMap, "dampingGlobal", false);
+				data.massGlobal = getValue(constraintMap, "massGlobal", false);
+				data.windGlobal = getValue(constraintMap, "windGlobal", false);
+				data.gravityGlobal = getValue(constraintMap, "gravityGlobal", false);
+				data.mixGlobal = getValue(constraintMap, "mixGlobal", false);
+
+				skeletonData.physicsConstraints.push(data);
+			}
+		}
+
 		// Skins.
 		if (root.skins) {
 			for (let i = 0; i < root.skins.length; i++) {
@@ -272,6 +323,15 @@ export class SkeletonJson {
 						let constraintName = skinMap.path[ii];
 						let constraint = skeletonData.findPathConstraint(constraintName);
 						if (!constraint) throw new Error(`Couldn't find path constraint ${constraintName} for skin ${skinMap.name}.`);
+						skin.constraints.push(constraint);
+					}
+				}
+
+				if (skinMap.physics) {
+					for (let ii = 0; ii < skinMap.physics.length; ii++) {
+						let constraintName = skinMap.physics[ii];
+						let constraint = skeletonData.findPhysicsConstraint(constraintName);
+						if (!constraint) throw new Error(`Couldn't find physics constraint ${constraintName} for skin ${skinMap.name}.`);
 						skin.constraints.push(constraint);
 					}
 				}
@@ -679,6 +739,13 @@ export class SkeletonJson {
 					} else if (timelineName === "sheary") {
 						let timeline = new ShearYTimeline(frames, frames, boneIndex);
 						timelines.push(readTimeline1(timelineMap, timeline, 0, 1));
+					} else if (timelineName === "inherit") {
+						let timeline = new InheritTimeline(frames, bone.index);
+						for (let frame = 0; frame < timelineMap.length; frame++) {
+							let aFrame = timelineMap[frame];
+							timeline.setFrame(frame, getValue(aFrame, "time", 0), Utils.enumValue(Inherit, getValue(aFrame, "inherit", "Normal")));
+						}
+						timelines.push(timeline);
 					}
 				}
 			}
@@ -834,6 +901,52 @@ export class SkeletonJson {
 						}
 						timelines.push(timeline);
 					}
+				}
+			}
+		}
+
+		// Physics constraint timelines.
+		if (map.physics) {
+			for (let constraintName in map.physics) {
+				let constraintMap = map.physics[constraintName];
+				let constraintIndex = -1;
+				if (constraintName.length > 0) {
+					let constraint = skeletonData.findPhysicsConstraint(constraintName);
+					if (!constraint) throw new Error("Physics constraint not found: " + constraintName);
+					constraintIndex = skeletonData.physicsConstraints.indexOf(constraint);
+				}
+				for (let timelineName in constraintMap) {
+					let timelineMap = constraintMap[timelineName];
+					let keyMap = timelineMap[0];
+					if (!keyMap) continue;
+
+					let frames = timelineMap.length;
+					if (timelineName == "reset") {
+						const timeline = new PhysicsConstraintResetTimeline(timelineMap.size, constraintIndex);
+						for (let frame = 0; keyMap != null; keyMap = timelineMap[frame + 1], frame++)
+							timeline.setFrame(frame, getValue(keyMap, "time", 0));
+						timelines.push(timeline);
+						continue;
+					}
+
+					let timeline;
+					if (timelineName == "inertia")
+						timeline = new PhysicsConstraintInertiaTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "strength")
+						timeline = new PhysicsConstraintStrengthTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "damping")
+						timeline = new PhysicsConstraintDampingTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "mass")
+						timeline = new PhysicsConstraintMassTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "wind")
+						timeline = new PhysicsConstraintWindTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "gravity")
+						timeline = new PhysicsConstraintGravityTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "mix") //
+						timeline = new PhysicsConstraintMixTimeline(frames, frames, constraintIndex);
+					else
+						continue;
+					timelines.push(readTimeline1(timelineMap, timeline, 0, 1));
 				}
 			}
 		}

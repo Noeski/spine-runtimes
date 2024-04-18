@@ -60,6 +60,13 @@ namespace Spine.Unity {
 		public Material multiplyMaterial;
 		public Material screenMaterial;
 
+		/// <summary>Own color to replace <c>Graphic.m_Color</c>.</summary>
+		[UnityEngine.Serialization.FormerlySerializedAs("m_Color")]
+		[SerializeField] protected Color m_SkeletonColor = Color.white;
+		/// <summary>Sets the color of the skeleton. Does not call <see cref="Rebuild"/> and <see cref="UpdateMesh"/>
+		/// unnecessarily as <c>Graphic.color</c> would otherwise do.</summary>
+		override public Color color { get { return m_SkeletonColor; } set { m_SkeletonColor = value; } }
+
 		[SpineSkin(dataField: "skeletonDataAsset", defaultAsEmptyString: true)]
 		public string initialSkinName;
 		public bool initialFlipX, initialFlipY;
@@ -352,10 +359,8 @@ namespace Spine.Unity {
 				return;
 			UpdateAnimationStatus(deltaTime);
 
-			if (updateMode == UpdateMode.OnlyAnimationStatus) {
-				state.ApplyEventTimelinesOnly(skeleton, issueEvents: false);
+			if (updateMode == UpdateMode.OnlyAnimationStatus)
 				return;
-			}
 			ApplyAnimation();
 		}
 
@@ -380,9 +385,64 @@ namespace Spine.Unity {
 		protected void UpdateAnimationStatus (float deltaTime) {
 			deltaTime *= timeScale;
 			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
+
+			ApplyTransformMovementToPhysics();
+
+			if (updateMode == UpdateMode.OnlyAnimationStatus) {
+				state.ApplyEventTimelinesOnly(skeleton, issueEvents: false);
+				return;
+			}
 		}
 
-		protected void ApplyAnimation () {
+		public virtual void ApplyTransformMovementToPhysics () {
+			if (Application.isPlaying) {
+				if (physicsPositionInheritanceFactor != Vector2.zero) {
+					Vector2 position = GetPhysicsTransformPosition();
+					Vector2 positionDelta = (position - lastPosition) / meshScale;
+					if (physicsMovementRelativeTo != null) {
+						positionDelta.x *= physicsMovementRelativeTo.lossyScale.x;
+						positionDelta.y *= physicsMovementRelativeTo.lossyScale.y;
+					}
+					positionDelta.x *= physicsPositionInheritanceFactor.x / transform.lossyScale.x;
+					positionDelta.y *= physicsPositionInheritanceFactor.y / transform.lossyScale.y;
+
+					skeleton.PhysicsTranslate(positionDelta.x, positionDelta.y);
+					lastPosition = position;
+				}
+				if (physicsRotationInheritanceFactor != 0f) {
+					float rotation = GetPhysicsTransformRotation();
+					skeleton.PhysicsRotate(0, 0, physicsRotationInheritanceFactor * (rotation - lastRotation));
+					lastRotation = rotation;
+				}
+			}
+		}
+
+		protected Vector2 GetPhysicsTransformPosition () {
+			if (physicsMovementRelativeTo == null) {
+				return transform.position;
+			} else {
+				if (physicsMovementRelativeTo == transform.parent)
+					return transform.localPosition;
+				else
+					return physicsMovementRelativeTo.InverseTransformPoint(transform.position);
+			}
+		}
+
+		protected float GetPhysicsTransformRotation () {
+			if (physicsMovementRelativeTo == null) {
+				return this.transform.rotation.eulerAngles.z;
+			} else {
+				if (physicsMovementRelativeTo == this.transform.parent)
+					return this.transform.localRotation.eulerAngles.z;
+				else {
+					Quaternion relative = Quaternion.Inverse(physicsMovementRelativeTo.rotation) * this.transform.rotation;
+					return relative.eulerAngles.z;
+				}
+			}
+		}
+
+		public virtual void ApplyAnimation () {
 			if (BeforeApply != null)
 				BeforeApply(this);
 
@@ -394,19 +454,24 @@ namespace Spine.Unity {
 			AfterAnimationApplied();
 		}
 
-		public void AfterAnimationApplied () {
+		public virtual void AfterAnimationApplied () {
 			if (UpdateLocal != null)
 				UpdateLocal(this);
 
-			skeleton.UpdateWorldTransform();
-
-			if (UpdateWorld != null) {
+			if (UpdateWorld == null) {
+				UpdateWorldTransform(Skeleton.Physics.Update);
+			} else {
+				UpdateWorldTransform(Skeleton.Physics.Pose);
 				UpdateWorld(this);
-				skeleton.UpdateWorldTransform();
+				UpdateWorldTransform(Skeleton.Physics.Update);
 			}
 
 			if (UpdateComplete != null)
 				UpdateComplete(this);
+		}
+
+		protected void UpdateWorldTransform (Skeleton.Physics physics) {
+			skeleton.UpdateWorldTransform(physics);
 		}
 
 		public void LateUpdate () {
@@ -462,6 +527,7 @@ namespace Spine.Unity {
 
 		#region API
 		protected Skeleton skeleton;
+
 		public Skeleton Skeleton {
 			get {
 				Initialize(false);
@@ -502,6 +568,73 @@ namespace Spine.Unity {
 				Initialize(false);
 				return state;
 			}
+		}
+
+		/// <seealso cref="PhysicsPositionInheritanceFactor"/>
+		[SerializeField] protected Vector2 physicsPositionInheritanceFactor = Vector2.one;
+		/// <seealso cref="PhysicsRotationInheritanceFactor"/>
+		[SerializeField] protected float physicsRotationInheritanceFactor = 1.0f;
+		/// <summary>Reference transform relative to which physics movement will be calculated, or null to use world location.</summary>
+		[SerializeField] protected Transform physicsMovementRelativeTo = null;
+
+		/// <summary>Used for applying Transform translation to skeleton PhysicsConstraints.</summary>
+		protected Vector2 lastPosition;
+		/// <summary>Used for applying Transform rotation to skeleton PhysicsConstraints.</summary>
+		protected float lastRotation;
+
+		/// <summary>When set to non-zero, Transform position movement in X and Y direction
+		/// is applied to skeleton PhysicsConstraints, multiplied by this scale factor.
+		/// Typical values are <c>Vector2.one</c> to apply XY movement 1:1,
+		/// <c>Vector2(2f, 2f)</c> to apply movement with double intensity,
+		/// <c>Vector2(1f, 0f)</c> to apply only horizontal movement, or
+		/// <c>Vector2.zero</c> to not apply any Transform position movement at all.</summary>
+		public Vector2 PhysicsPositionInheritanceFactor {
+			get {
+				return physicsPositionInheritanceFactor;
+			}
+			set {
+				if (physicsPositionInheritanceFactor == Vector2.zero && value != Vector2.zero) ResetLastPosition();
+				physicsPositionInheritanceFactor = value;
+			}
+		}
+
+		/// <summary>When set to non-zero, Transform rotation movement is applied to skeleton PhysicsConstraints,
+		/// multiplied by this scale factor. Typical values are <c>1</c> to apply movement 1:1,
+		/// <c>2</c> to apply movement with double intensity, or
+		/// <c>0</c> to not apply any Transform rotation movement at all.</summary>
+		public float PhysicsRotationInheritanceFactor {
+			get {
+				return physicsRotationInheritanceFactor;
+			}
+			set {
+				if (physicsRotationInheritanceFactor == 0f && value != 0f) ResetLastRotation();
+				physicsRotationInheritanceFactor = value;
+			}
+		}
+
+		/// <summary>Reference transform relative to which physics movement will be calculated, or null to use world location.</summary>
+		public Transform PhysicsMovementRelativeTo {
+			get {
+				return physicsMovementRelativeTo;
+			}
+			set {
+				physicsMovementRelativeTo = value;
+				if (physicsPositionInheritanceFactor != Vector2.zero) ResetLastPosition();
+				if (physicsRotationInheritanceFactor != 0f) ResetLastRotation();
+			}
+		}
+
+		public void ResetLastPosition () {
+			lastPosition = GetPhysicsTransformPosition();
+		}
+
+		public void ResetLastRotation () {
+			lastRotation = GetPhysicsTransformRotation();
+		}
+
+		public void ResetLastPositionAndRotation () {
+			lastPosition = GetPhysicsTransformPosition();
+			lastRotation = GetPhysicsTransformRotation();
 		}
 
 		[SerializeField] protected Spine.Unity.MeshGenerator meshGenerator = new MeshGenerator();
@@ -682,6 +815,8 @@ namespace Spine.Unity {
 			InitMeshBuffers();
 			baseTexture = skeletonDataAsset.atlasAssets[0].PrimaryMaterial.mainTexture;
 			canvasRenderer.SetTexture(this.mainTexture); // Needed for overwriting initializations.
+
+			ResetLastPositionAndRotation();
 
 			// Set the initial Skin and Animation
 			if (!string.IsNullOrEmpty(initialSkinName))

@@ -86,7 +86,8 @@ namespace Spine.Unity {
 		/// <summary>
 		/// Occurs after the Skeleton's bone world space values are resolved (including all constraints).
 		/// Using this callback will cause the world space values to be solved an extra time.
-		/// Use this callback if want to use bone world space values, and also set bone local values.</summary>
+		/// Use this callback if want to use bone world space values, and also set bone local values.
+		/// </summary>
 		public event UpdateBonesDelegate UpdateWorld { add { _UpdateWorld += value; } remove { _UpdateWorld -= value; } }
 
 		/// <summary>
@@ -233,19 +234,25 @@ namespace Spine.Unity {
 				return;
 			UpdateAnimationStatus(deltaTime);
 
-			if (updateMode == UpdateMode.OnlyAnimationStatus) {
-				state.ApplyEventTimelinesOnly(skeleton, issueEvents: false);
+			if (updateMode == UpdateMode.OnlyAnimationStatus)
 				return;
-			}
 			ApplyAnimation();
 		}
 
 		protected void UpdateAnimationStatus (float deltaTime) {
 			deltaTime *= timeScale;
 			state.Update(deltaTime);
+			skeleton.Update(deltaTime);
+
+			ApplyTransformMovementToPhysics();
+
+			if (updateMode == UpdateMode.OnlyAnimationStatus) {
+				state.ApplyEventTimelinesOnly(skeleton, issueEvents: false);
+				return;
+			}
 		}
 
-		protected void ApplyAnimation () {
+		public virtual void ApplyAnimation () {
 			if (_BeforeApply != null)
 				_BeforeApply(this);
 
@@ -261,11 +268,12 @@ namespace Spine.Unity {
 			if (_UpdateLocal != null)
 				_UpdateLocal(this);
 
-			skeleton.UpdateWorldTransform();
-
-			if (_UpdateWorld != null) {
+			if (_UpdateWorld == null) {
+				UpdateWorldTransform(Skeleton.Physics.Update);
+			} else {
+				UpdateWorldTransform(Skeleton.Physics.Pose);
 				_UpdateWorld(this);
-				skeleton.UpdateWorldTransform();
+				UpdateWorldTransform(Skeleton.Physics.Update);
 			}
 
 			if (_UpdateComplete != null) {

@@ -39,7 +39,7 @@ using namespace spine;
 
 template<typename T, typename... Args>
 unique_ptr<T> make_unique_test(Args &&...args) {
-	return unique_ptr<T>(new T(forward<Args>(args)...));
+	return unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
 void callback(AnimationState *state, EventType type, TrackEntry *entry, Event *event) {
@@ -124,7 +124,7 @@ void spineboy(SkeletonData *skeletonData, Atlas *atlas) {
 	skeleton->setToSetupPose();
 
 	skeleton->setPosition(320, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	Slot *headSlot = skeleton->findSlot("head");
 
@@ -227,7 +227,7 @@ void ikDemo(SkeletonData *skeletonData, Atlas *atlas) {
 		// Calculate final world transform with the
 		// crosshair bone set to the mouse cursor
 		// position.
-		drawable.skeleton->updateWorldTransform();
+		drawable.skeleton->updateWorldTransform(Physics_Update);
 
 		window.clear();
 		window.draw(drawable);
@@ -246,7 +246,7 @@ void goblins(SkeletonData *skeletonData, Atlas *atlas) {
 	skeleton->setSkin("goblingirl");
 	skeleton->setSlotsToSetupPose();
 	skeleton->setPosition(320, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "walk", true);
 
@@ -281,7 +281,7 @@ void raptor(SkeletonData *skeletonData, Atlas *atlas) {
 
 	Skeleton *skeleton = drawable.skeleton;
 	skeleton->setPosition(320, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "walk", true);
 	drawable.state->addAnimation(1, "gun-grab", false, 2);
@@ -314,7 +314,7 @@ void tank(SkeletonData *skeletonData, Atlas *atlas) {
 
 	Skeleton *skeleton = drawable.skeleton;
 	skeleton->setPosition(500, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "drive", true);
 
@@ -345,7 +345,7 @@ void vine(SkeletonData *skeletonData, Atlas *atlas) {
 
 	Skeleton *skeleton = drawable.skeleton;
 	skeleton->setPosition(320, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "grow", true);
 
@@ -378,7 +378,7 @@ void stretchyman(SkeletonData *skeletonData, Atlas *atlas) {
 	Skeleton *skeleton = drawable.skeleton;
 
 	skeleton->setPosition(100, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "sneak", true);
 
@@ -411,7 +411,7 @@ void stretchymanStrechyIk(SkeletonData *skeletonData, Atlas *atlas) {
 	Skeleton *skeleton = drawable->skeleton;
 
 	skeleton->setPosition(100, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable->state->setAnimation(0, "sneak", true);
 
@@ -445,7 +445,7 @@ void coin(SkeletonData *skeletonData, Atlas *atlas) {
 
 	Skeleton *skeleton = drawable.skeleton;
 	skeleton->setPosition(320, 320);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "animation", true);
 
@@ -479,7 +479,7 @@ void dragon(SkeletonData *skeletonData, Atlas *atlas) {
 
 	Skeleton *skeleton = drawable.skeleton;
 	skeleton->setPosition(320, 320);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "flying", true);
 
@@ -513,7 +513,7 @@ void owl(SkeletonData *skeletonData, Atlas *atlas) {
 
 	Skeleton *skeleton = drawable.skeleton;
 	skeleton->setPosition(320, 400);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "idle", true);
 	drawable.state->setAnimation(1, "blink", true);
@@ -588,7 +588,7 @@ void mixAndMatch(SkeletonData *skeletonData, Atlas *atlas) {
 	skeleton->setSlotsToSetupPose();
 
 	skeleton->setPosition(320, 590);
-	skeleton->updateWorldTransform();
+	skeleton->updateWorldTransform(Physics_Update);
 
 	drawable.state->setAnimation(0, "dance", true);
 
@@ -599,6 +599,141 @@ void mixAndMatch(SkeletonData *skeletonData, Atlas *atlas) {
 	while (window.isOpen()) {
 		while (window.pollEvent(event))
 			if (event.type == sf::Event::Closed) window.close();
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable.update(delta);
+
+		window.clear();
+		window.draw(drawable);
+		window.display();
+	}
+}
+
+void celestialCircus(SkeletonData *skeletonData, Atlas *atlas) {
+	SP_UNUSED(atlas);
+
+	SkeletonDrawable drawable(skeletonData);
+	drawable.timeScale = 1;
+	drawable.setUsePremultipliedAlpha(true);
+
+	Skeleton *skeleton = drawable.skeleton;
+	skeleton->setPosition(320, 480);
+	skeleton->updateWorldTransform(Physics_Update);
+
+	drawable.state->setAnimation(0, "swing", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - celestial circus");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event)) {
+			if (event.type == sf::Event::Closed) window.close();
+		}
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable.update(delta);
+
+		window.clear();
+		window.draw(drawable);
+		window.display();
+	}
+}
+
+void sack(SkeletonData *skeletonData, Atlas *atlas) {
+	SP_UNUSED(atlas);
+
+	SkeletonDrawable drawable(skeletonData);
+	drawable.timeScale = 1;
+	drawable.setUsePremultipliedAlpha(true);
+
+	Skeleton *skeleton = drawable.skeleton;
+	skeleton->setPosition(320, 480);
+	skeleton->updateWorldTransform(Physics_Update);
+
+	drawable.state->setAnimation(0, "walk", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - sack");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event)) {
+			if (event.type == sf::Event::Closed) window.close();
+		}
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable.update(delta);
+
+		window.clear();
+		window.draw(drawable);
+		window.display();
+	}
+}
+
+void snowglobe(SkeletonData *skeletonData, Atlas *atlas) {
+	SP_UNUSED(atlas);
+
+	SkeletonDrawable drawable(skeletonData);
+	drawable.timeScale = 1;
+	drawable.setUsePremultipliedAlpha(true);
+
+	Skeleton *skeleton = drawable.skeleton;
+	skeleton->setPosition(320, 480);
+	skeleton->updateWorldTransform(Physics_Update);
+
+	drawable.state->setAnimation(0, "shake", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - snowglobe");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event)) {
+			if (event.type == sf::Event::Closed) window.close();
+		}
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable.update(delta);
+
+		window.clear();
+		window.draw(drawable);
+		window.display();
+	}
+}
+
+void cloudpot(SkeletonData *skeletonData, Atlas *atlas) {
+	SP_UNUSED(atlas);
+
+	SkeletonDrawable drawable(skeletonData);
+	drawable.timeScale = 1;
+	drawable.setUsePremultipliedAlpha(true);
+
+	Skeleton *skeleton = drawable.skeleton;
+	skeleton->setPosition(320, 480);
+	skeleton->updateWorldTransform(Physics_Update);
+	drawable.state->setAnimation(0, "playing-in-the-rain", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - cloudpot");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+
+	while (window.isOpen()) {
+		while (window.pollEvent(event)) {
+			if (event.type == sf::Event::Closed) window.close();
+		}
 
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
@@ -626,7 +761,7 @@ void test(SkeletonData *skeletonData, Atlas *atlas) {
 	for (int i = 0; i < 1; i++) {
 		animationState.update(d);
 		animationState.apply(skeleton);
-		skeleton.updateWorldTransform();
+		skeleton.updateWorldTransform(Physics_Update);
 		d += 0.1f;
 	}
 }
@@ -636,17 +771,20 @@ DebugExtension dbgExtension(SpineExtension::getInstance());
 int main() {
 	SpineExtension::setInstance(&dbgExtension);
 
+	testcase(cloudpot, "data/cloud-pot.json", "data/cloud-pot.skel", "data/cloud-pot-pma.atlas", 0.2);
+	testcase(sack, "data/sack-pro.json", "data/sack-pro.skel", "data/sack-pma.atlas", 0.2f);
+	testcase(celestialCircus, "data/celestial-circus-pro.json", "data/celestial-circus-pro.skel", "data/celestial-circus-pma.atlas", 0.2f);
+	testcase(snowglobe, "data/snowglobe-pro.json", "data/snowglobe-pro.skel", "data/snowglobe-pma.atlas", 0.2f);
+	testcase(dragon, "data/dragon-ess.json", "data/dragon-ess.skel", "data/dragon-pma.atlas", 0.6f);
+	testcase(spineboy, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.62f);
+	testcase(ikDemo, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.6f);
 	testcase(vine, "data/vine-pro.json", "data/vine-pro.skel", "data/vine-pma.atlas", 0.5f);
 	testcase(dragon, "data/dragon-ess.json", "data/dragon-ess.skel", "data/dragon-pma.atlas", 0.6f);
-	testcase(vine, "data/vine-pro.json", "data/vine-pro.skel", "data/vine-pma.atlas", 0.5f);
 	testcase(owl, "data/owl-pro.json", "data/owl-pro.skel", "data/owl-pma.atlas", 0.5f);
-	testcase(ikDemo, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.6f);
 	testcase(mixAndMatch, "data/mix-and-match-pro.json", "data/mix-and-match-pro.skel", "data/mix-and-match-pma.atlas", 0.5f);
 	testcase(coin, "data/coin-pro.json", "data/coin-pro.skel", "data/coin-pma.atlas", 0.5f);
-	testcase(spineboy, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.6f);
 	testcase(raptor, "data/raptor-pro.json", "data/raptor-pro.skel", "data/raptor-pma.atlas", 0.5f);
 	testcase(tank, "data/tank-pro.json", "data/tank-pro.skel", "data/tank-pma.atlas", 0.2f);
-	testcase(raptor, "data/raptor-pro.json", "data/raptor-pro.skel", "data/raptor-pma.atlas", 0.5f);
 	testcase(goblins, "data/goblins-pro.json", "data/goblins-pro.skel", "data/goblins-pma.atlas", 1.4f);
 	testcase(stretchyman, "data/stretchyman-pro.json", "data/stretchyman-pro.skel", "data/stretchyman-pma.atlas", 0.6f);
 

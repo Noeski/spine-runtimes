@@ -38,6 +38,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.utils.ScreenUtils;
 
+import com.esotericsoftware.spine.Skeleton.Physics;
 import com.esotericsoftware.spine.utils.SkeletonDataLoader;
 import com.esotericsoftware.spine.utils.SkeletonDataLoader.SkeletonDataParameter;
 
@@ -99,10 +100,12 @@ public class SkeletonAssetManagerTest extends ApplicationAdapter {
 			state.addAnimation(0, "run", true, 0); // Run after the jump.
 		}
 
-		state.update(Gdx.graphics.getDeltaTime()); // Update the animation time.
+		float delta = Gdx.graphics.getDeltaTime();
+		state.update(delta); // Update the animation time.
 
 		state.apply(skeleton); // Poses skeleton using current animations. This sets the bones' local SRT.
-		skeleton.updateWorldTransform(); // Uses the bones' local SRT to compute their world SRT.
+		skeleton.update(delta); // Advance the skeleton time. This is needed when the skeleton has physics.
+		skeleton.updateWorldTransform(Physics.update); // Uses the bones' local SRT to compute their world SRT.
 
 		// Configure the camera, SpriteBatch, and SkeletonRendererDebug.
 		camera.update();

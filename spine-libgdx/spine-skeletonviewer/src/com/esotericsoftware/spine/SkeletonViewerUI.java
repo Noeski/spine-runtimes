@@ -86,11 +86,12 @@ class SkeletonViewerUI {
 	Window window = new Window("Skeleton", skin);
 	Table root = new Table(skin);
 	TextButton openButton = new TextButton("Open", skin);
+	TextButton reloadButton = new TextButton("Reload", skin);
 	TextButton minimizeButton = new TextButton("-", skin);
 
 	Slider loadScaleSlider = new Slider(0.1f, 3, 0.01f, false, skin);
 	Label loadScaleLabel = new Label("100%", skin);
-	TextButton loadScaleResetButton = new TextButton("Reload", skin);
+	TextButton loadScaleResetButton = new TextButton("Reset", skin);
 
 	Slider zoomSlider = new Slider(0.01f, 10, 0.01f, false, skin);
 	Label zoomLabel = new Label("100%", skin);
@@ -169,16 +170,16 @@ class SkeletonViewerUI {
 		loopCheckbox.setChecked(true);
 
 		loadScaleSlider.setValue(1);
-		loadScaleSlider.setSnapToValues(new float[] {0.5f, 1, 1.5f, 2, 2.5f}, 0.09f);
+		loadScaleSlider.setSnapToValues(0.09f, 0.5f, 1, 1.5f, 2, 2.5f);
 
 		zoomSlider.setValue(1);
-		zoomSlider.setSnapToValues(new float[] {1, 2}, 0.30f);
+		zoomSlider.setSnapToValues(0.30f, 1, 2);
 
 		xScaleSlider.setValue(1);
-		xScaleSlider.setSnapToValues(new float[] {-1.5f, -1, -0.5f, 0.5f, 1, 1.5f}, 0.12f);
+		xScaleSlider.setSnapToValues(0.12f, -1.5f, -1, -0.5f, 0.5f, 1, 1.5f);
 
 		yScaleSlider.setValue(1);
-		yScaleSlider.setSnapToValues(new float[] {-1.5f, -1, -0.5f, 0.5f, 1, 1.5f}, 0.12f);
+		yScaleSlider.setSnapToValues(0.12f, -1.5f, -1, -0.5f, 0.5f, 1, 1.5f);
 
 		skinList.getSelection().setRequired(false);
 		skinList.getSelection().setToggle(true);
@@ -187,10 +188,10 @@ class SkeletonViewerUI {
 		animationList.getSelection().setToggle(true);
 
 		mixSlider.setValue(0.3f);
-		mixSlider.setSnapToValues(new float[] {1, 1.5f, 2, 2.5f, 3, 3.5f}, 0.12f);
+		mixSlider.setSnapToValues(0.12f, 1, 1.5f, 2, 2.5f, 3, 3.5f);
 
 		speedSlider.setValue(1);
-		speedSlider.setSnapToValues(new float[] {0.5f, 0.75f, 1, 1.25f, 1.5f, 2, 2.5f}, 0.09f);
+		speedSlider.setSnapToValues(0.09f, 0.5f, 0.75f, 1, 1.25f, 1.5f, 2, 2.5f);
 
 		alphaSlider.setValue(1);
 		alphaSlider.setDisabled(true);
@@ -206,7 +207,8 @@ class SkeletonViewerUI {
 		window.setY(-2);
 
 		window.getTitleLabel().setColor(new Color(0xc1ffffff));
-		window.getTitleTable().add(openButton).space(3);
+		window.getTitleTable().add(openButton).spaceLeft(10);
+		window.getTitleTable().add(reloadButton).space(3);
 		window.getTitleTable().add(minimizeButton).width(20);
 
 		skinScroll.setFadeScrollBars(false);
@@ -382,6 +384,13 @@ class SkeletonViewerUI {
 			}
 		});
 
+		reloadButton.addListener(new ChangeListener() {
+			public void changed (ChangeEvent event, Actor actor) {
+				viewer.resetCameraPosition();
+				if (viewer.loadSkeleton(viewer.lastFile)) toast("Reloaded.");
+			}
+		});
+
 		minimizeButton.addListener(new ClickListener() {
 			public boolean touchDown (InputEvent event, float x, float y, int pointer, int button) {
 				event.cancel();
@@ -398,6 +407,7 @@ class SkeletonViewerUI {
 					window.setHeight(Gdx.graphics.getHeight() / SkeletonViewer.uiScale + 8);
 					minimizeButton.setText("-");
 				}
+				window.setWidth(window.getPrefWidth());
 			}
 		});
 
@@ -405,17 +415,12 @@ class SkeletonViewerUI {
 			public void changed (ChangeEvent event, Actor actor) {
 				loadScaleLabel.setText(Integer.toString((int)(loadScaleSlider.getValue() * 100)) + "%");
 				if (!loadScaleSlider.isDragging() && viewer.loadSkeleton(viewer.skeletonFile)) toast("Reloaded.");
-				loadScaleResetButton.setText(loadScaleSlider.getValue() == 1 ? "Reload" : "Reset");
 			}
 		});
 		loadScaleResetButton.addListener(new ChangeListener() {
 			public void changed (ChangeEvent event, Actor actor) {
 				viewer.resetCameraPosition();
-				if (loadScaleSlider.getValue() == 1) {
-					if (viewer.loadSkeleton(viewer.skeletonFile)) toast("Reloaded.");
-				} else
-					loadScaleSlider.setValue(1);
-				loadScaleResetButton.setText("Reload");
+				loadScaleSlider.setValue(1);
 			}
 		});
 

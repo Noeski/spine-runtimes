@@ -35,6 +35,12 @@
 #define SPINE_TRIANGLECHECK // Avoid calling SetTriangles at the cost of checking for mesh differences (vertex counts, memberwise attachment list compare) every frame.
 //#define SPINE_DEBUG
 
+// New optimization option to avoid rendering fully transparent attachments at slot alpha 0.
+// Comment out this line to revert to previous behaviour.
+// You may only need this option disabled when utilizing a custom shader which
+// uses vertex color alpha for purposes other than transparency.
+#define SLOT_ALPHA_DISABLES_ATTACHMENT
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -48,11 +54,19 @@ namespace Spine.Unity {
 		/// <summary> Vertex positions. To be used for UnityEngine.Mesh.vertices.</summary>
 		public Vector3[] vertexBuffer;
 
-		/// <summary> Vertex UVs. To be used for UnityEngine.Mesh.uvs.</summary>
+		/// <summary> Vertex texture coordinates (UVs). To be used for UnityEngine.Mesh.uv.</summary>
 		public Vector2[] uvBuffer;
 
 		/// <summary> Vertex colors. To be used for UnityEngine.Mesh.colors32.</summary>
 		public Color32[] colorBuffer;
+
+		/// <summary> Optional vertex texture coordinates (UVs), second channel. To be used for UnityEngine.Mesh.uv2.
+		/// Using this accessor automatically allocates and resizes the buffer accordingly.</summary>
+		public Vector2[] uv2Buffer { get { return meshGenerator.UV2; } }
+
+		/// <summary> Optional vertex texture coordinates (UVs), third channel. To be used for UnityEngine.Mesh.uv3.
+		/// Using this accessor automatically allocates and resizes the buffer accordingly.</summary>
+		public Vector2[] uv3Buffer { get { return meshGenerator.UV3; } }
 
 		/// <summary> The Spine rendering component's MeshGenerator. </summary>
 		public MeshGenerator meshGenerator;
@@ -66,17 +80,16 @@ namespace Spine.Unity {
 		[System.Serializable]
 		public struct Settings {
 			public bool useClipping;
-			[Space]
 			[Range(-0.1f, 0f)] public float zSpacing;
-			[Space]
-			[Header("Vertex Data")]
-			public bool pmaVertexColors;
 			public bool tintBlack;
-			[Tooltip("Enable when using Additive blend mode at SkeletonGraphic under a CanvasGroup. " +
-				"When enabled, Additive alpha value is stored at uv2.g instead of color.a to capture CanvasGroup modifying color.a.")]
-			public bool canvasGroupTintBlack;
-			public bool calculateTangents;
+			[UnityEngine.Serialization.FormerlySerializedAs("canvasGroupTintBlack")]
+			[Tooltip("Enable when using SkeletonGraphic under a CanvasGroup. " +
+				"When enabled, PMA Vertex Color alpha value is stored at uv2.g instead of color.a to capture " +
+				"CanvasGroup modifying color.a. Also helps to detect correct parameter setting combinations.")]
+			public bool canvasGroupCompatible;
+			public bool pmaVertexColors;
 			public bool addNormals;
+			public bool calculateTangents;
 			public bool immutableTriangles;
 
 			static public Settings Default {
@@ -118,6 +131,13 @@ namespace Spine.Unity {
 		[NonSerialized] Vector2[] tempTanBuffer;
 		[NonSerialized] ExposedList<Vector2> uv2;
 		[NonSerialized] ExposedList<Vector2> uv3;
+
+		/// <summary> Optional vertex texture coordinates (UVs), second channel. To be used for UnityEngine.Mesh.uv2.
+		/// Using this accessor automatically allocates and resizes the buffer accordingly.</summary>
+		public Vector2[] UV2 { get { PrepareOptionalUVBuffer(ref uv2, vertexBuffer.Count); return uv2.Items; } }
+		/// <summary> Optional vertex texture coordinates (UVs), third channel. To be used for UnityEngine.Mesh.uv3.
+		/// Using this accessor automatically allocates and resizes the buffer accordingly.</summary>
+		public Vector2[] UV3 { get { PrepareOptionalUVBuffer(ref uv3, vertexBuffer.Count); return uv3.Items; } }
 		#endregion
 
 		public int VertexCount { get { return vertexBuffer.Count; } }
@@ -181,7 +201,11 @@ namespace Spine.Unity {
 			Slot[] drawOrderItems = drawOrder.Items;
 			for (int i = 0; i < drawOrderCount; i++) {
 				Slot slot = drawOrderItems[i];
-				if (!slot.Bone.Active) {
+				if (!slot.Bone.Active
+#if SLOT_ALPHA_DISABLES_ATTACHMENT
+					|| slot.A == 0f
+#endif
+					) {
 					workingAttachmentsItems[i] = null;
 					continue;
 				}
@@ -252,7 +276,11 @@ namespace Spine.Unity {
 			Material lastRendererMaterial = null;
 			for (int i = 0; i < drawOrderCount; i++) {
 				Slot slot = drawOrderItems[i];
-				if (!slot.Bone.Active) continue;
+				if (!slot.Bone.Active
+#if SLOT_ALPHA_DISABLES_ATTACHMENT
+					|| slot.A == 0f
+#endif
+					) continue;
 				Attachment attachment = slot.Attachment;
 				IHasTextureRegion rendererAttachment = attachment as IHasTextureRegion;
 				if (rendererAttachment != null) {
@@ -305,7 +333,11 @@ namespace Spine.Unity {
 			Slot[] drawOrderItems = drawOrder.Items;
 			for (int i = 0; i < drawOrderCount; i++) {
 				Slot slot = drawOrderItems[i];
-				if (!slot.Bone.Active) {
+				if (!slot.Bone.Active
+#if SLOT_ALPHA_DISABLES_ATTACHMENT
+					|| slot.A == 0f
+#endif
+					) {
 					workingAttachmentsItems[i] = null;
 					continue;
 				}
@@ -515,7 +547,7 @@ namespace Spine.Unity {
 #else
 			bool useClipping = settings.useClipping;
 #endif
-			bool canvasGroupTintBlack = settings.tintBlack && settings.canvasGroupTintBlack;
+			bool canvasGroupTintBlack = settings.tintBlack && settings.canvasGroupCompatible;
 
 			if (useClipping) {
 				if (instruction.preActiveClippingSlotSource >= 0) {
@@ -586,13 +618,12 @@ namespace Spine.Unity {
 					color.r = (byte)(skeletonR * slot.R * c.r * color.a);
 					color.g = (byte)(skeletonG * slot.G * c.g * color.a);
 					color.b = (byte)(skeletonB * slot.B * c.b * color.a);
-					if (slot.Data.BlendMode == BlendMode.Additive) {
-						if (canvasGroupTintBlack)
-							tintBlackAlpha = 0;
-						else
+					if (canvasGroupTintBlack) {
+						tintBlackAlpha = (slot.Data.BlendMode == BlendMode.Additive) ? 0 : colorA;
+						color.a = 255;
+					} else {
+						if (slot.Data.BlendMode == BlendMode.Additive)
 							color.a = 0;
-					} else if (canvasGroupTintBlack) { // other blend modes
-						tintBlackAlpha = colorA;
 					}
 				} else {
 					color.a = (byte)(skeletonA * slot.A * c.a * 255);
@@ -726,7 +757,7 @@ namespace Spine.Unity {
 		// Use this faster method when no clipping is involved.
 		public void BuildMeshWithArrays (SkeletonRendererInstruction instruction, bool updateTriangles) {
 			Settings settings = this.settings;
-			bool canvasGroupTintBlack = settings.tintBlack && settings.canvasGroupTintBlack;
+			bool canvasGroupTintBlack = settings.tintBlack && settings.canvasGroupCompatible;
 			int totalVertexCount = instruction.rawVertexCount;
 
 			// Add data to vertex buffers
@@ -768,24 +799,19 @@ namespace Spine.Unity {
 					int vi = vertexIndex;
 					b2.y = 1f;
 
-					{
-						if (uv2 == null) {
-							uv2 = new ExposedList<Vector2>();
-							uv3 = new ExposedList<Vector2>();
-						}
-						if (totalVertexCount > uv2.Items.Length) { // Manual ExposedList.Resize()
-							Array.Resize(ref uv2.Items, totalVertexCount);
-							Array.Resize(ref uv3.Items, totalVertexCount);
-						}
-						uv2.Count = uv3.Count = totalVertexCount;
-					}
+					PrepareOptionalUVBuffer(ref uv2, totalVertexCount);
+					PrepareOptionalUVBuffer(ref uv3, totalVertexCount);
 
 					Vector2[] uv2i = uv2.Items;
 					Vector2[] uv3i = uv3.Items;
 
 					for (int slotIndex = startSlot; slotIndex < endSlot; slotIndex++) {
 						Slot slot = drawOrderItems[slotIndex];
-						if (!slot.Bone.Active) continue;
+						if (!slot.Bone.Active
+#if SLOT_ALPHA_DISABLES_ATTACHMENT
+							|| slot.A == 0f
+#endif
+							) continue;
 						Attachment attachment = slot.Attachment;
 
 						rg.x = slot.R2; //r
@@ -828,7 +854,11 @@ namespace Spine.Unity {
 
 				for (int slotIndex = startSlot; slotIndex < endSlot; slotIndex++) {
 					Slot slot = drawOrderItems[slotIndex];
-					if (!slot.Bone.Active) continue;
+					if (!slot.Bone.Active
+#if SLOT_ALPHA_DISABLES_ATTACHMENT
+						|| slot.A == 0f
+#endif
+						) continue;
 					Attachment attachment = slot.Attachment;
 					float z = slotIndex * settings.zSpacing;
 
@@ -850,7 +880,9 @@ namespace Spine.Unity {
 							color.r = (byte)(r * slot.R * regionAttachment.R * color.a);
 							color.g = (byte)(g * slot.G * regionAttachment.G * color.a);
 							color.b = (byte)(b * slot.B * regionAttachment.B * color.a);
-							if (slot.Data.BlendMode == BlendMode.Additive && !canvasGroupTintBlack) color.a = 0;
+							if (canvasGroupTintBlack) color.a = 255;
+							else if (slot.Data.BlendMode == BlendMode.Additive) color.a = 0;
+
 						} else {
 							color.a = (byte)(a * slot.A * regionAttachment.A * 255);
 							color.r = (byte)(r * slot.R * regionAttachment.R * 255);
@@ -897,7 +929,8 @@ namespace Spine.Unity {
 								color.r = (byte)(r * slot.R * meshAttachment.R * color.a);
 								color.g = (byte)(g * slot.G * meshAttachment.G * color.a);
 								color.b = (byte)(b * slot.B * meshAttachment.B * color.a);
-								if (slot.Data.BlendMode == BlendMode.Additive && !canvasGroupTintBlack) color.a = 0;
+								if (canvasGroupTintBlack) color.a = 255;
+								else if (slot.Data.BlendMode == BlendMode.Additive) color.a = 0;
 							} else {
 								color.a = (byte)(a * slot.A * meshAttachment.A * 255);
 								color.r = (byte)(r * slot.R * meshAttachment.R * 255);
@@ -984,7 +1017,11 @@ namespace Spine.Unity {
 					Slot[] drawOrderItems = skeleton.DrawOrder.Items;
 					for (int slotIndex = submeshInstruction.startSlot, endSlot = submeshInstruction.endSlot; slotIndex < endSlot; slotIndex++) {
 						Slot slot = drawOrderItems[slotIndex];
-						if (!slot.Bone.Active) continue;
+						if (!slot.Bone.Active
+#if SLOT_ALPHA_DISABLES_ATTACHMENT
+							|| slot.A == 0f
+#endif
+							) continue;
 
 						Attachment attachment = drawOrderItems[slotIndex].Attachment;
 						if (attachment is RegionAttachment) {
@@ -1041,23 +1078,34 @@ namespace Spine.Unity {
 
 			int ovc = vertexBuffer.Count;
 			int newVertexCount = ovc + vertexCount;
-			{
-				if (uv2 == null) {
-					uv2 = new ExposedList<Vector2>();
-					uv3 = new ExposedList<Vector2>();
-				}
-				if (newVertexCount > uv2.Items.Length) { // Manual ExposedList.Resize()
-					Array.Resize(ref uv2.Items, newVertexCount);
-					Array.Resize(ref uv3.Items, newVertexCount);
-				}
-				uv2.Count = uv3.Count = newVertexCount;
-			}
+
+			PrepareOptionalUVBuffer(ref uv2, newVertexCount);
+			PrepareOptionalUVBuffer(ref uv3, newVertexCount);
 
 			Vector2[] uv2i = uv2.Items;
 			Vector2[] uv3i = uv3.Items;
 			for (int i = 0; i < vertexCount; i++) {
 				uv2i[ovc + i] = rg;
 				uv3i[ovc + i] = bo;
+			}
+		}
+
+		void PrepareOptionalUVBuffer (ref ExposedList<Vector2> uvBuffer, int vertexCount) {
+			if (uvBuffer == null) {
+				uvBuffer = new ExposedList<Vector2>();
+			}
+			if (vertexCount > uvBuffer.Items.Length) { // Manual ExposedList.Resize()
+				Array.Resize(ref uvBuffer.Items, vertexCount);
+			}
+			uvBuffer.Count = vertexCount;
+		}
+
+		void ResizeOptionalUVBuffer (ref ExposedList<Vector2> uvBuffer, int vertexCount) {
+			if (uvBuffer != null) {
+				if (vertexCount != uvBuffer.Items.Length) {
+					Array.Resize(ref uvBuffer.Items, vertexCount);
+					uvBuffer.Count = vertexCount;
+				}
 			}
 		}
 		#endregion
@@ -1102,18 +1150,12 @@ namespace Spine.Unity {
 					mesh.normals = this.normals;
 				}
 
-				if (settings.tintBlack) {
-					if (uv2 != null) {
-						// Sometimes, the vertex buffer becomes smaller. We need to trim the size of the tint black buffers to match.
-						if (vbiLength != uv2.Items.Length) {
-							Array.Resize(ref uv2.Items, vbiLength);
-							Array.Resize(ref uv3.Items, vbiLength);
-							uv2.Count = uv3.Count = vbiLength;
-						}
-						mesh.uv2 = this.uv2.Items;
-						mesh.uv3 = this.uv3.Items;
-					}
-				}
+				// Sometimes, the vertex buffer becomes smaller. We need to trim the size of
+				// the uv2 and uv3 buffers (used for tint black) to match.
+				ResizeOptionalUVBuffer(ref uv2, vbiLength);
+				ResizeOptionalUVBuffer(ref uv3, vbiLength);
+				mesh.uv2 = this.uv2 == null ? null : this.uv2.Items;
+				mesh.uv3 = this.uv3 == null ? null : this.uv3.Items;
 			}
 		}
 

@@ -51,10 +51,11 @@ SkeletonDrawable::~SkeletonDrawable() {
 	delete skeleton;
 }
 
-void SkeletonDrawable::update(float delta) {
+void SkeletonDrawable::update(float delta, Physics physics) {
 	animationState->update(delta);
 	animationState->apply(*skeleton);
-	skeleton->updateWorldTransform();
+	skeleton->update(delta);
+	skeleton->updateWorldTransform(physics);
 }
 
 void SkeletonDrawable::draw(SDL_Renderer *renderer) {

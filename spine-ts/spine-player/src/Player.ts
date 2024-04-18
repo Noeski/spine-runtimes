@@ -27,7 +27,7 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import { Animation, AnimationState, AnimationStateData, AtlasAttachmentLoader, Bone, Color, Disposable, Downloader, MathUtils, MixBlend, MixDirection, Skeleton, SkeletonBinary, SkeletonData, SkeletonJson, StringMap, TextureAtlas, TextureFilter, TimeKeeper, TrackEntry, Vector2 } from "@esotericsoftware/spine-core"
+import { Animation, AnimationState, AnimationStateData, AtlasAttachmentLoader, Bone, Color, Disposable, Downloader, MathUtils, MixBlend, MixDirection, Physics, Skeleton, SkeletonBinary, SkeletonData, SkeletonJson, StringMap, TextureAtlas, TextureFilter, TimeKeeper, TrackEntry, Vector2 } from "@esotericsoftware/spine-core"
 import { AssetManager, GLTexture, Input, LoadingScreen, ManagedWebGLRenderingContext, ResizeMode, SceneRenderer, Vector3 } from "@esotericsoftware/spine-webgl"
 
 export interface SpinePlayerConfig {
@@ -39,6 +39,9 @@ export interface SpinePlayerConfig {
 
 	/* The URL of the skeleton binary file (.skel). Undefined if jsonUrl is given. */
 	binaryUrl?: string
+
+	/* The scale when loading the skeleton data. Default: 1 */
+	scale?: number
 
 	/* The URL of the skeleton atlas file (.atlas). Atlas page images are automatically resolved. */
 	atlasUrl?: string
@@ -151,6 +154,9 @@ export interface SpinePlayerConfig {
 
 	/* Optional: Callback at the start of each frame, before the skeleton is posed or drawn. Default: none */
 	frame?: (player: SpinePlayer, delta: number) => void
+
+	/* Optional: Callback to update the skeleton's world transform. Default: player.skeleton.updateWorldTransform(spine.Physics.update) is called */
+	updateWorldTransform?: (player: SpinePlayer, delta: number) => void
 
 	/* Optional: Callback after the skeleton is posed each frame, before it is drawn. Default: none */
 	update?: (player: SpinePlayer, delta: number) => void
@@ -281,6 +287,7 @@ export class SpinePlayer implements Disposable {
 		if (!config) throw new Error("A configuration object must be passed to to new SpinePlayer().");
 		if ((config as any).skelUrl) config.binaryUrl = (config as any).skelUrl;
 		if (!config.jsonUrl && !config.binaryUrl) throw new Error("A URL must be specified for the skeleton JSON or binary file.");
+		if (!config.scale) config.scale = 1;
 		if (!config.atlasUrl) throw new Error("A URL must be specified for the atlas file.");
 		if (!config.backgroundColor) config.backgroundColor = config.alpha ? "00000000" : "000000";
 		if (!config.fullScreenBackgroundColor) config.fullScreenBackgroundColor = config.backgroundColor;
@@ -370,7 +377,8 @@ export class SpinePlayer implements Disposable {
 				let time = animationDuration * percentage;
 				this.animationState!.update(time - this.playTime);
 				this.animationState!.apply(this.skeleton!);
-				this.skeleton!.updateWorldTransform();
+				this.skeleton!.update(time - this.playTime);
+				this.skeleton!.updateWorldTransform(Physics.update);
 				this.playTime = time;
 			};
 
@@ -456,29 +464,25 @@ export class SpinePlayer implements Disposable {
 
 		// Load skeleton data.
 		let skeletonData: SkeletonData;
-		if (config.jsonUrl) {
-			try {
-				let jsonData = this.assetManager!.remove(config.jsonUrl);
-				if (!jsonData) throw new Error("Empty JSON data.");
+		try {
+			let loader: any, data: any, attachmentLoader = new AtlasAttachmentLoader(atlas);
+			if (config.jsonUrl) {
+				data = this.assetManager!.remove(config.jsonUrl);
+				if (!data) throw new Error("Empty JSON data.");
 				if (config.jsonField) {
-					jsonData = jsonData[config.jsonField];
-					if (!jsonData) throw new Error("JSON field does not exist: " + config.jsonField);
+					data = data[config.jsonField];
+					if (!data) throw new Error("JSON field does not exist: " + config.jsonField);
 				}
-				let json = new SkeletonJson(new AtlasAttachmentLoader(atlas));
-				skeletonData = json.readSkeletonData(jsonData);
-			} catch (e) {
-				this.showError(`Error: Could not load skeleton JSON.\n${(e as any).message}`, e as any);
-				return;
+				loader = new SkeletonJson(attachmentLoader);
+			} else {
+				data = this.assetManager!.remove(config.binaryUrl!);
+				loader = new SkeletonBinary(attachmentLoader);
 			}
-		} else {
-			let binaryData = this.assetManager!.remove(config.binaryUrl!);
-			let binary = new SkeletonBinary(new AtlasAttachmentLoader(atlas));
-			try {
-				skeletonData = binary.readSkeletonData(binaryData);
-			} catch (e) {
-				this.showError(`Error: Could not load skeleton binary.\n${(e as any).message}`, e as any);
-				return;
-			}
+			loader.scale = config.scale;
+			skeletonData = loader.readSkeletonData(data);
+		} catch (e) {
+			this.showError(`Error: Could not load skeleton data.\n${(e as any).message}`, e as any);
+			return;
 		}
 		this.skeleton = new Skeleton(skeletonData);
 		let stateData = new AnimationStateData(skeletonData);
@@ -542,6 +546,7 @@ export class SpinePlayer implements Disposable {
 			} else {
 				entry = this.animationState.setEmptyAnimation(0);
 				entry.trackEnd = 100000000;
+				this.skeleton.updateWorldTransform(Physics.update);
 				this.setViewport(entry.animation!);
 				this.pause();
 			}
@@ -768,7 +773,7 @@ export class SpinePlayer implements Disposable {
 
 		for (let i = 0; i < steps; i++, time += stepTime) {
 			animation.apply(this.skeleton!, time, time, false, [], 1, MixBlend.setup, MixDirection.mixIn);
-			this.skeleton!.updateWorldTransform();
+			this.skeleton!.updateWorldTransform(Physics.update);
 			this.skeleton!.getBounds(offset, size);
 
 			if (!isNaN(offset.x) && !isNaN(offset.y) && !isNaN(size.x) && !isNaN(size.y)) {
@@ -814,9 +819,13 @@ export class SpinePlayer implements Disposable {
 
 				// Update animation time and pose the skeleton.
 				if (!this.paused) {
+					skeleton.update(playDelta);
 					this.animationState!.update(playDelta);
 					this.animationState!.apply(skeleton);
-					skeleton.updateWorldTransform();
+					if (config.updateWorldTransform)
+						config.updateWorldTransform(this, playDelta);
+					else
+						skeleton.updateWorldTransform(Physics.update);
 
 					if (config.showControls) {
 						this.playTime += playDelta;
@@ -833,10 +842,10 @@ export class SpinePlayer implements Disposable {
 
 				// Determine the viewport.
 				let viewport = this.viewport;
-				viewport.x = this.currentViewport.x - (this.currentViewport.padLeft as number),
-					viewport.y = this.currentViewport.y - (this.currentViewport.padBottom as number),
-					viewport.width = this.currentViewport.width + (this.currentViewport.padLeft as number) + (this.currentViewport.padRight as number),
-					viewport.height = this.currentViewport.height + (this.currentViewport.padBottom as number) + (this.currentViewport.padTop as number)
+				viewport.x = this.currentViewport.x - (this.currentViewport.padLeft as number);
+				viewport.y = this.currentViewport.y - (this.currentViewport.padBottom as number);
+				viewport.width = this.currentViewport.width + (this.currentViewport.padLeft as number) + (this.currentViewport.padRight as number);
+				viewport.height = this.currentViewport.height + (this.currentViewport.padBottom as number) + (this.currentViewport.padTop as number);
 
 				if (this.previousViewport) {
 					let transitionAlpha = (performance.now() - this.viewportTransitionStart) / 1000 / config.viewport!.transitionTime!;
@@ -878,13 +887,13 @@ export class SpinePlayer implements Disposable {
 
 				// Draw the skeleton and debug output.
 				renderer.drawSkeleton(skeleton, config.premultipliedAlpha);
-				if ((renderer.skeletonDebugRenderer.drawBones = config.debug!.bones!)
-					|| (renderer.skeletonDebugRenderer.drawBoundingBoxes = config.debug!.bounds!)
-					|| (renderer.skeletonDebugRenderer.drawClipping = config.debug!.clipping!)
-					|| (renderer.skeletonDebugRenderer.drawMeshHull = config.debug!.hulls!)
-					|| (renderer.skeletonDebugRenderer.drawPaths = config.debug!.paths!)
-					|| (renderer.skeletonDebugRenderer.drawRegionAttachments = config.debug!.regions!)
-					|| (renderer.skeletonDebugRenderer.drawMeshTriangles = config.debug!.meshes!)
+				if (Number(renderer.skeletonDebugRenderer.drawBones = config.debug!.bones! ?? false)
+					+ Number(renderer.skeletonDebugRenderer.drawBoundingBoxes = config.debug!.bounds! ?? false)
+					+ Number(renderer.skeletonDebugRenderer.drawClipping = config.debug!.clipping! ?? false)
+					+ Number(renderer.skeletonDebugRenderer.drawMeshHull = config.debug!.hulls! ?? false)
+					+ Number(renderer.skeletonDebugRenderer.drawPaths = config.debug!.paths! ?? false)
+					+ Number(renderer.skeletonDebugRenderer.drawRegionAttachments = config.debug!.regions! ?? false)
+					+ Number(renderer.skeletonDebugRenderer.drawMeshTriangles = config.debug!.meshes! ?? false) > 0
 				) {
 					renderer.drawSkeletonDebug(skeleton, config.premultipliedAlpha);
 				}
