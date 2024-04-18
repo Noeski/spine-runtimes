@@ -193,6 +193,9 @@ namespace Spine.Unity.Editor {
 		}
 
 		public void OnSceneGUI () {
+			if (Event.current.type != EventType.Repaint)
+				return;
+
 			SkeletonRenderer skeletonRenderer = (SkeletonRenderer)target;
 			if (loadingFailed)
 				return;

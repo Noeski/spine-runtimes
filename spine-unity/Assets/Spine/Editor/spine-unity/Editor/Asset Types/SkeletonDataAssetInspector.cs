@@ -220,10 +220,10 @@ namespace Spine.Unity.Editor {
 				EditorGUILayout.LabelField("Preview", EditorStyles.boldLabel);
 				DrawAnimationList();
 				if (targetSkeletonData.Animations.Count > 0) {
-					const string AnimationReferenceButtonText = "Create Animation Reference Assets";
+					const string AnimationReferenceButtonText = "Update Animation Reference Assets";
 					const string AnimationReferenceTooltipText = "AnimationReferenceAsset acts as Unity asset for a reference to a Spine.Animation. This can be used in inspectors.\n\nIt serializes a reference to a SkeletonData asset and an animationName.\n\nAt runtime, a reference to its Spine.Animation is loaded and cached into the object to be used as needed. This skips the need to find and cache animation references in individual MonoBehaviours.";
 					if (GUILayout.Button(SpineInspectorUtility.TempContent(AnimationReferenceButtonText, Icons.animationRoot, AnimationReferenceTooltipText), GUILayout.Width(250), GUILayout.Height(26))) {
-						CreateAnimationReferenceAssets();
+						AssetUtility.UpdateAnimationReferenceAssets(targetSkeletonDataAsset);
 					}
 				}
 				EditorGUILayout.Space();
@@ -741,7 +741,7 @@ namespace Spine.Unity.Editor {
 		#endregion
 	}
 
-	internal class SkeletonInspectorPreview {
+	public class SkeletonInspectorPreview {
 		Color OriginColor = new Color(0.3f, 0.3f, 0.3f, 1);
 		static readonly int SliderHash = "Slider".GetHashCode();
 
@@ -756,8 +756,11 @@ namespace Spine.Unity.Editor {
 		static float CurrentTime { get { return (float)EditorApplication.timeSinceStartup; } }
 
 		Action Repaint;
+		public event Action OnDrawHandles;
 		public event Action<string> OnSkinChanged;
-
+		public bool ShouldDrawSkinToolbar = true;
+		public bool ShouldDrawTimeBar = true;
+		
 		Texture previewTexture;
 		PreviewRenderUtility previewRenderUtility;
 		Camera PreviewUtilityCamera {
@@ -782,6 +785,8 @@ namespace Spine.Unity.Editor {
 		List<SpineEventTooltip> currentAnimationEventTooltips = new List<SpineEventTooltip>();
 
 		public bool IsValid { get { return skeletonAnimation != null && skeletonAnimation.valid; } }
+
+		public SkeletonAnimation SkeletonAnimation { get { return IsValid ? skeletonAnimation : null; } }
 
 		public Skeleton Skeleton { get { return IsValid ? skeletonAnimation.Skeleton : null; } }
 
@@ -903,9 +908,16 @@ namespace Spine.Unity.Editor {
 					GUI.DrawTexture(r, previewTexture, ScaleMode.StretchToFill, false);
 			}
 
-			DrawSkinToolbar(r);
+			if (ShouldDrawSkinToolbar) {
+				DrawSkinToolbar(r);
+			}
+			
 			//DrawSetupPoseButton(r);
-			DrawTimeBar(r);
+
+			if (ShouldDrawTimeBar) {
+				DrawTimeBar(r);
+			}
+			
 			HandleMouseScroll(r);
 		}
 
@@ -963,6 +975,8 @@ namespace Spine.Unity.Editor {
 					SpineHandles.DrawBoundingBoxes(skeletonAnimation.transform, skeletonAnimation.skeleton);
 					if (SkeletonDataAssetInspector.showAttachments)
 						SpineHandles.DrawPaths(skeletonAnimation.transform, skeletonAnimation.skeleton);
+
+					if (OnDrawHandles != null) OnDrawHandles();
 				}
 
 				renderer.enabled = false;
@@ -980,15 +994,23 @@ namespace Spine.Unity.Editor {
 			lastCameraOrthoGoal = cameraOrthoGoal;
 
 			Camera c = this.PreviewUtilityCamera;
-			float orthoSet = Mathf.Lerp(c.orthographicSize, cameraOrthoGoal, 0.1f);
 
-			c.orthographicSize = orthoSet;
+			float orthoDist = Mathf.Abs(c.orthographicSize - cameraOrthoGoal);
 
-			float dist = Vector3.Distance(c.transform.position, cameraPositionGoal);
-			if (dist > 0f) {
-				Vector3 pos = Vector3.Lerp(c.transform.position, cameraPositionGoal, 0.1f);
-				pos.x = 0;
-				c.transform.position = pos;
+			if(orthoDist > 0.01f) {
+				float orthoSet = Mathf.Lerp(c.orthographicSize, cameraOrthoGoal, 0.1f);
+
+				c.orthographicSize = orthoSet;
+				RefreshOnNextUpdate();
+			}
+
+			Vector3 positionGoal = cameraPositionGoal;
+			positionGoal.x = 0;
+
+			float dist = Vector3.Distance(c.transform.position, positionGoal);
+
+			if (dist > 0.01f) {
+				c.transform.position = positionGoal;
 				c.transform.rotation = Quaternion.identity;
 				RefreshOnNextUpdate();
 			}

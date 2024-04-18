@@ -92,7 +92,10 @@ namespace Spine.Unity.Editor {
 			}
 		}
 
-		public void OnSceneGUI () {
+		public void OnSceneGUI () {	
+			if (Event.current.type != EventType.Repaint)
+				return;
+
 			BoneFollowerGraphic tbf = target as BoneFollowerGraphic;
 			SkeletonGraphic skeletonGraphicComponent = tbf.SkeletonGraphic;
 			if (skeletonGraphicComponent == null) return;

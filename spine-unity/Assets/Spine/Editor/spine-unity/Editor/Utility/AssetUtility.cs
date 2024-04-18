@@ -579,6 +579,9 @@ namespace Spine.Unity.Editor {
 							SkeletonBaker.UpdateMecanimClips(skeletonDataAsset);
 #endif
 
+						if (currentHash == null || lastHash != currentHash)
+							UpdateAnimationReferenceAssets(skeletonDataAsset);
+
 						// if (currentHash == null || lastHash != currentHash)
 						// Do any upkeep on synchronized assets
 
@@ -589,6 +592,87 @@ namespace Spine.Unity.Editor {
 					SpineEditorUtilities.DataReloadHandler.ReloadAnimationReferenceAssets(skeletonDataAsset);
 				}
 			}
+		}
+
+		public static void UpdateAnimationReferenceAssets (SkeletonDataAsset skeletonDataAsset) {
+			SkeletonData skeletonData = skeletonDataAsset.GetSkeletonData(true);
+			if (skeletonData == null) {
+				return;
+			}
+
+			HashSet<AnimationReferenceAsset> existingAnimations = new HashSet<AnimationReferenceAsset>();
+			HashSet<EventDataReferenceAsset> existingEvents = new HashSet<EventDataReferenceAsset>();
+			Object[] referenceAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(AssetDatabase.GetAssetPath(skeletonDataAsset));
+			AnimationReferenceAsset[] animationReferenceAssets = referenceAssets.OfType<AnimationReferenceAsset>().ToArray();
+			EventDataReferenceAsset[] eventDataReferenceAssets = referenceAssets.OfType<EventDataReferenceAsset>().ToArray();
+
+			FieldInfo animationNameField = typeof(AnimationReferenceAsset).GetField("animationName", BindingFlags.NonPublic | BindingFlags.Instance);
+			FieldInfo eventNameField = typeof(EventDataReferenceAsset).GetField("eventName", BindingFlags.NonPublic | BindingFlags.Instance);
+
+			FieldInfo animationSkeletonDataAssetField = typeof(AnimationReferenceAsset).GetField("skeletonDataAsset", BindingFlags.NonPublic | BindingFlags.Instance);
+			FieldInfo eventSkeletonDataAssetField = typeof(EventDataReferenceAsset).GetField("skeletonDataAsset", BindingFlags.NonPublic | BindingFlags.Instance);
+
+			foreach (Animation animation in skeletonData.Animations) {
+				string assetName = AssetUtility.GetPathSafeName(animation.Name);
+				bool found = false;
+
+				foreach (AnimationReferenceAsset animationReferenceAsset in animationReferenceAssets) {
+					if (animationReferenceAsset.name == assetName) {
+						found = true;
+						animationNameField.SetValue(animationReferenceAsset, animation.Name);
+						existingAnimations.Add(animationReferenceAsset);
+						break;
+					}
+				}
+
+				if (found) {
+					continue;
+				}
+
+				AnimationReferenceAsset newAsset = ScriptableObject.CreateInstance<AnimationReferenceAsset>();
+				newAsset.name = assetName;
+				animationSkeletonDataAssetField.SetValue(newAsset, skeletonDataAsset);
+				animationNameField.SetValue(newAsset, animation.Name);
+				AssetDatabase.AddObjectToAsset(newAsset, skeletonDataAsset);
+			}
+
+			foreach (EventData eventData in skeletonData.Events) {
+				string assetName = AssetUtility.GetPathSafeName("event/" + eventData.Name);
+				bool found = false;
+
+				foreach (EventDataReferenceAsset eventDataReferenceAsset in eventDataReferenceAssets) {
+					if (eventDataReferenceAsset.name == assetName) {
+						found = true;
+						eventNameField.SetValue(eventDataReferenceAsset, eventData.Name);
+						existingEvents.Add(eventDataReferenceAsset);
+						break;
+					}
+				}
+
+				if (found) {
+					continue;
+				}
+
+				EventDataReferenceAsset newAsset = ScriptableObject.CreateInstance<EventDataReferenceAsset>();
+				newAsset.name = assetName;
+				eventSkeletonDataAssetField.SetValue(newAsset, skeletonDataAsset);
+				eventNameField.SetValue(newAsset, eventData.Name);
+				AssetDatabase.AddObjectToAsset(newAsset, skeletonDataAsset);
+			}
+
+			foreach (AnimationReferenceAsset animationReferenceAsset in animationReferenceAssets) {
+				if (!existingAnimations.Contains(animationReferenceAsset)) {
+					AssetDatabase.RemoveObjectFromAsset(animationReferenceAsset);
+				}
+			}
+
+			foreach (EventDataReferenceAsset eventDataReferenceAsset in eventDataReferenceAssets) {
+				if (!existingEvents.Contains(eventDataReferenceAsset)) {
+					AssetDatabase.RemoveObjectFromAsset(eventDataReferenceAsset);
+				}
+			}
+
+			AssetDatabase.SaveAssets();
 		}
 
 		#region Import Atlases
@@ -1049,6 +1133,7 @@ namespace Spine.Unity.Editor {
 					skeletonDataAsset.atlasAssets = atlasAssets;
 					SpineEditorUtilities.ClearSkeletonDataAsset(skeletonDataAsset);
 				}
+				UpdateAnimationReferenceAssets(skeletonDataAsset);
 				SkeletonData skeletonData = skeletonDataAsset.GetSkeletonData(true);
 				if (skeletonData != null)
 					BlendModeMaterialsUtility.UpdateBlendModeMaterials(skeletonDataAsset, ref skeletonData);
@@ -1449,5 +1534,6 @@ namespace Spine.Unity.Editor {
 		}
 #endif
 		#endregion
+
 	}
 }
