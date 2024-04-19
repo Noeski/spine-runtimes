@@ -1014,7 +1014,7 @@ namespace Spine {
 		/// <param name="time">The frame time in seconds.</param>
 		public void SetFrame (int frame, float time, Inherit inherit) {
 			frame *= ENTRIES;
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 			frames[frame + INHERIT] = (int)inherit;
 		}
 
@@ -2693,7 +2693,7 @@ namespace Spine {
 		/// <summary>Sets the time for the specified frame.<summary>
 		/// <param name="frame">Between 0 and <code>frameCount</code>, inclusive.</param>
 		public void SetFrame (int frame, float time) {
-			frames[frame] = time;
+			frames[frame] = FixTime(time);
 		}
 
 		/// <summary>Resets the physics constraint when frames > <code>lastTime</code> and <= <code>time</code>.</summary>
