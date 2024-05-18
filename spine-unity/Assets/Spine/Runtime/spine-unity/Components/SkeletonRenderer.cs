@@ -239,6 +239,7 @@ namespace Spine.Unity {
 					Initialize(false);
 					if (meshRenderer)
 						meshRenderer.enabled = false;
+					updateMode = UpdateMode.FullUpdate;
 				}
 			}
 			remove {
@@ -270,6 +271,11 @@ namespace Spine.Unity {
 		[System.NonSerialized] readonly SkeletonRendererInstruction currentInstructions = new SkeletonRendererInstruction();
 		readonly MeshGenerator meshGenerator = new MeshGenerator();
 		[System.NonSerialized] readonly MeshRendererBuffers rendererBuffers = new MeshRendererBuffers();
+
+		/// <summary>Returns the <see cref="SkeletonClipping"/> used by this renderer for use with e.g.
+		/// <see cref="Skeleton.GetBounds(out float, out float, out float, out float, ref float[], SkeletonClipping)"/>
+		/// </summary>
+		public SkeletonClipping SkeletonClipping { get { return meshGenerator.SkeletonClipping; } }
 		#endregion
 
 		#region Cached component references
@@ -400,7 +406,8 @@ namespace Spine.Unity {
 
 		public virtual void Awake () {
 			Initialize(false);
-			updateMode = updateWhenInvisible;
+			if (generateMeshOverride == null || !disableRenderingOnOverride)
+				updateMode = updateWhenInvisible;
 		}
 
 #if UNITY_EDITOR && CONFIGURABLE_ENTER_PLAY_MODE
