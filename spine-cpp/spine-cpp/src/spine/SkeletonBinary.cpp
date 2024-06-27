@@ -125,6 +125,8 @@ SkeletonData *SkeletonBinary::readSkeletonData(const unsigned char *binary, cons
 		char errorMsg[255];
 		snprintf(errorMsg, 255, "Skeleton version %s does not match runtime version %s", skeletonData->_version.buffer(), SPINE_VERSION_STRING);
 		setError(errorMsg, "");
+        delete input;
+        delete skeletonData;
 		return NULL;
 	}
 
@@ -322,6 +324,12 @@ SkeletonData *SkeletonBinary::readSkeletonData(const unsigned char *binary, cons
 	if (defaultSkin) {
 		skeletonData->_defaultSkin = defaultSkin;
 		skeletonData->_skins.add(defaultSkin);
+	}
+
+	if (!this->getError().isEmpty()) {
+		delete input;
+		delete skeletonData;
+		return NULL;
 	}
 
 	/* Skins. */

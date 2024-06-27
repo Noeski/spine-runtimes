@@ -556,12 +556,16 @@ namespace Spine.Unity.Editor {
 				return;
 
 			SkeletonGraphic skeletonGraphic = (SkeletonGraphic)target;
-			if (skeletonGraphic.EditReferenceRect) {
-				SpineHandles.DrawRectTransformRect(skeletonGraphic, Color.gray);
-				SpineHandles.DrawReferenceRect(skeletonGraphic, Color.green);
-			} else {
-				SpineHandles.DrawReferenceRect(skeletonGraphic, Color.blue);
+
+			if (skeletonGraphic.layoutScaleMode != SkeletonGraphic.LayoutMode.None) {
+				if (skeletonGraphic.EditReferenceRect) {
+					SpineHandles.DrawRectTransformRect(skeletonGraphic, Color.gray);
+					SpineHandles.DrawReferenceRect(skeletonGraphic, Color.green);
+				} else {
+					SpineHandles.DrawReferenceRect(skeletonGraphic, Color.blue);
+				}
 			}
+			SpineHandles.DrawPivotOffsetHandle(skeletonGraphic, Color.green);
 		}
 
 		public static void SetSeparatorSlotNames (SkeletonRenderer skeletonRenderer, string[] newSlotNames) {

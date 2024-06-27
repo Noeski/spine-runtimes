@@ -34,6 +34,7 @@ import {
 	AtlasAttachmentLoader,
 	ClippingAttachment,
 	Color,
+	MathUtils,
 	MeshAttachment,
 	Physics,
 	RegionAttachment,
@@ -53,6 +54,7 @@ import type { IPointData } from "@pixi/core";
 import { Ticker } from "@pixi/core";
 import type { IDestroyOptions, DisplayObject } from "@pixi/display";
 import { Container } from "@pixi/display";
+import { Graphics } from "@pixi/graphics";
 
 /**
  * Options to configure a {@link Spine} game object.
@@ -62,7 +64,7 @@ export interface ISpineOptions {
 	autoUpdate?: boolean;
 	/**  The value passed to the skeleton reader. If omitted, 1 is passed. See {@link SkeletonBinary.scale} for details. */
 	scale?: number;
-	/** 
+	/**
 	 * A factory to override the default ones to render Spine meshes ({@link DarkSlotMesh} or {@link SlotMesh}).
 	 * If omitted, a factory returning a ({@link DarkSlotMesh} or {@link SlotMesh}) will be used depending on the presence of
 	 * a dark tint mesh in the skeleton.
@@ -110,6 +112,9 @@ export class Spine extends Container {
 	}
 
 	protected slotMeshFactory: () => ISlotMesh = () => new SlotMesh();
+
+	beforeUpdateWorldTransforms: (object: Spine) => void = () => { };
+	afterUpdateWorldTransforms: (object: Spine) => void = () => { };
 
 	private autoUpdateWarned: boolean = false;
 	private _autoUpdate: boolean = true;
@@ -177,23 +182,19 @@ export class Spine extends Container {
 		// Because reasons, pixi uses deltaFrames at 60fps. We ignore the default deltaFrames and use the deltaSeconds from pixi ticker.
 		const delta = deltaSeconds ?? Ticker.shared.deltaMS / 1000;
 		this.state.update(delta);
+		this.state.apply(this.skeleton);
+		this.beforeUpdateWorldTransforms(this);
 		this.skeleton.update(delta);
+		this.skeleton.updateWorldTransform(Physics.update);
+		this.afterUpdateWorldTransforms(this);
 	}
 
-	/** Before rendering, apply the state change to the Spine AnimationState and update the skeleton transform, then call the {@link Container.updateTransform}. */
+	/** Render the meshes based on the current skeleton state, render debug information, then call {@link Container.updateTransform}. */
 	public override updateTransform (): void {
-		this.updateSpineTransform();
+		this.renderMeshes();
+		this.sortChildren();
 		this.debug?.renderDebug(this);
 		super.updateTransform();
-	}
-
-	protected updateSpineTransform (): void {
-		// if I ever create the linked spines, this will be useful.
-
-		this.state.apply(this.skeleton);
-		this.skeleton.updateWorldTransform(Physics.update);
-		this.updateGeometry();
-		this.sortChildren();
 	}
 
 	/** Destroy Spine game object elements, then call the {@link Container.destroy} with the given options */
@@ -204,6 +205,14 @@ export class Spine extends Container {
 		this.state.clearListeners();
 		this.debug = undefined;
 		this.meshesCache.clear();
+		this.slotsObject.clear();
+
+		for (let maskKey in this.clippingSlotToPixiMasks) {
+			const mask = this.clippingSlotToPixiMasks[maskKey];
+			mask.destroy();
+			delete this.clippingSlotToPixiMasks[maskKey];
+		}
+
 		super.destroy(options);
 	}
 
@@ -230,21 +239,146 @@ export class Spine extends Container {
 		}
 	}
 
-	private verticesCache: NumberArrayLike = Utils.newFloatArray(1024);
+	private slotsObject = new Map<Slot, Container>();
+	private getSlotFromRef (slotRef: number | string | Slot): Slot {
+		let slot: Slot | null;
+		if (typeof slotRef === 'number') slot = this.skeleton.slots[slotRef];
+		else if (typeof slotRef === 'string') slot = this.skeleton.findSlot(slotRef);
+		else slot = slotRef;
 
-	private updateGeometry (): void {
+		if (!slot) throw new Error(`No slot found with the given slot reference: ${slotRef}`);
+
+		return slot;
+	}
+	/**
+	 * Add a pixi Container as a child of the Spine object.
+	 * The Container will be rendered coherently with the draw order of the slot.
+	 * If an attachment is active on the slot, the pixi Container will be rendered on top of it.
+	 * If the Container is already attached to the given slot, nothing will happen.
+	 * If the Container is already attached to another slot, it will be removed from that slot
+	 * before adding it to the given one.
+	 * If another Container is already attached to this slot, the old one will be removed from this
+	 * slot before adding it to the current one.
+	 * @param slotRef - The slot index, or the slot name, or the Slot where the pixi object will be added to.
+	 * @param pixiObject - The pixi Container to add.
+	 */
+	addSlotObject (slotRef: number | string | Slot, pixiObject: Container): void {
+		let slot = this.getSlotFromRef(slotRef);
+		let oldPixiObject = this.slotsObject.get(slot);
+		if (oldPixiObject === pixiObject) return;
+
+		// search if the pixiObject was already in another slotObject
+		for (const [otherSlot, oldPixiObjectAnotherSlot] of this.slotsObject) {
+			if (otherSlot !== slot && oldPixiObjectAnotherSlot === pixiObject) {
+				this.removeSlotObject(otherSlot, pixiObject);
+				break;
+			}
+		}
+
+		if (oldPixiObject) this.removeChild(oldPixiObject);
+
+		this.slotsObject.set(slot, pixiObject);
+		this.addChild(pixiObject);
+	}
+	/**
+	 * Return the Container connected to the given slot, if any.
+	 * Otherwise return undefined
+	 * @param pixiObject - The slot index, or the slot name, or the Slot to get the Container from.
+	 * @returns a Container if any, undefined otherwise.
+	 */
+	getSlotObject (slotRef: number | string | Slot): Container | undefined {
+		return this.slotsObject.get(this.getSlotFromRef(slotRef));
+	}
+	/**
+	 * Remove a slot object from the given slot.
+	 * If `pixiObject` is passed and attached to the given slot, remove it from the slot.
+	 * If `pixiObject` is not passed and the given slot has an attached Container, remove it from the slot.
+	 * @param slotRef - The slot index, or the slot name, or the Slot where the pixi object will be remove from.
+	 * @param pixiObject - Optional, The pixi Container to remove.
+	 */
+	removeSlotObject (slotRef: number | string | Slot, pixiObject?: Container): void {
+		let slot = this.getSlotFromRef(slotRef);
+		let slotObject = this.slotsObject.get(slot);
+		if (!slotObject) return;
+
+		// if pixiObject is passed, remove only if it is equal to the given one
+		if (pixiObject && pixiObject !== slotObject) return;
+
+		this.removeChild(slotObject);
+		this.slotsObject.delete(slot);
+	}
+
+	private verticesCache: NumberArrayLike = Utils.newFloatArray(1024);
+	private clippingSlotToPixiMasks: Record<string, Graphics> = {};
+	private pixiMaskCleanup (slot: Slot) {
+		let mask = this.clippingSlotToPixiMasks[slot.data.name];
+		if (mask) {
+			delete this.clippingSlotToPixiMasks[slot.data.name];
+			mask.destroy();
+		}
+	}
+	private updatePixiObject (pixiObject: Container, slot: Slot, zIndex: number) {
+		pixiObject.setTransform(slot.bone.worldX, slot.bone.worldY, slot.bone.getWorldScaleX(), slot.bone.getWorldScaleX(), slot.bone.getWorldRotationX() * MathUtils.degRad);
+		pixiObject.zIndex = zIndex + 1;
+		pixiObject.alpha = this.skeleton.color.a * slot.color.a;
+	}
+	private updateAndSetPixiMask (pixiMaskSource: PixiMaskSource | null, pixiObject: Container) {
+		if (Spine.clipper.isClipping() && pixiMaskSource) {
+			let mask = this.clippingSlotToPixiMasks[pixiMaskSource.slot.data.name] as Graphics;
+			if (!mask) {
+				mask = new Graphics();
+				this.clippingSlotToPixiMasks[pixiMaskSource.slot.data.name] = mask;
+				this.addChild(mask);
+			}
+			if (!pixiMaskSource.computed) {
+				pixiMaskSource.computed = true;
+				const clippingAttachment = pixiMaskSource.slot.attachment as ClippingAttachment;
+				const world = Array.from(clippingAttachment.vertices);
+				clippingAttachment.computeWorldVertices(pixiMaskSource.slot, 0, clippingAttachment.worldVerticesLength, world, 0, 2);
+				mask.clear().lineStyle(0).beginFill(0x000000).drawPolygon(world);
+			}
+			pixiObject.mask = mask;
+		} else if (pixiObject.mask) {
+			pixiObject.mask = null;
+		}
+	}
+
+	/* 
+	* Colors in pixi are premultiplied.
+	* Pixi blending modes are modified to work with premultiplied colors. We cannot create custom blending modes.
+	* Textures are loaded as premultiplied (see assers/atlasLoader.ts: alphaMode: `page.pma ? ALPHA_MODES.PMA : ALPHA_MODES.UNPACK`):
+	* - textures non premultiplied are premultiplied on GPU on upload
+	* - textures premultiplied are uploaded on GPU as is since they are already premultiplied
+	* 
+	* We need to take this into consideration and calculates final colors for both light and dark color as if textures were always premultiplied.
+	* This implies for example that alpha for dark tint is always 1. This is way in DarkTintRenderer we have only the alpha of the light color.
+	* If we ever want to load texture as non premultiplied on GPU, we must add a new dark alpha parameter to the TintMaterial and set the alpha.
+	*/
+	private renderMeshes (): void {
 		this.resetMeshes();
 
 		let triangles: Array<number> | null = null;
 		let uvs: NumberArrayLike | null = null;
+		let pixiMaskSource: PixiMaskSource | null = null;
 		const drawOrder = this.skeleton.drawOrder;
 
-		for (let i = 0, n = drawOrder.length; i < n; i++) {
+		for (let i = 0, n = drawOrder.length, slotObjectsCounter = 0; i < n; i++) {
 			const slot = drawOrder[i];
+
+			// render pixi object on the current slot on top of the slot attachment
+			let pixiObject = this.slotsObject.get(slot);
+			let zIndex = i + slotObjectsCounter;
+			if (pixiObject) {
+				this.updatePixiObject(pixiObject, slot, zIndex + 1);
+				slotObjectsCounter++;
+				this.updateAndSetPixiMask(pixiMaskSource, pixiObject);
+			}
+
 			const useDarkColor = slot.darkColor != null;
 			const vertexSize = Spine.clipper.isClipping() ? 2 : useDarkColor ? Spine.DARK_VERTEX_SIZE : Spine.VERTEX_SIZE;
 			if (!slot.bone.active) {
 				Spine.clipper.clipEndWithSlot(slot);
+				this.pixiMaskCleanup(slot);
 				continue;
 			}
 			const attachment = slot.getAttachment();
@@ -272,9 +406,11 @@ export class Spine extends Container {
 				texture = <SpineTexture>mesh.region?.texture;
 			} else if (attachment instanceof ClippingAttachment) {
 				Spine.clipper.clipStart(slot, attachment);
+				pixiMaskSource = { slot, computed: false };
 				continue;
 			} else {
 				Spine.clipper.clipEndWithSlot(slot);
+				this.pixiMaskCleanup(slot);
 				continue;
 			}
 			if (texture != null) {
@@ -282,6 +418,7 @@ export class Spine extends Container {
 				const skeletonColor = skeleton.color;
 				const slotColor = slot.color;
 				const alpha = skeletonColor.a * slotColor.a * attachmentColor.a;
+				// cannot premultiply the colors because the default mesh renderer already does that
 				this.lightColor.set(
 					skeletonColor.r * slotColor.r * attachmentColor.r,
 					skeletonColor.g * slotColor.g * attachmentColor.g,
@@ -289,9 +426,14 @@ export class Spine extends Container {
 					alpha
 				);
 				if (slot.darkColor != null) {
-					this.darkColor.setFromColor(slot.darkColor);
+					this.darkColor.set(
+						slot.darkColor.r,
+						slot.darkColor.g,
+						slot.darkColor.b,
+						1,
+					);
 				} else {
-					this.darkColor.set(0, 0, 0, 0);
+					this.darkColor.set(0, 0, 0, 1);
 				}
 
 				let finalVertices: NumberArrayLike;
@@ -300,7 +442,7 @@ export class Spine extends Container {
 				let finalIndicesLength: number;
 
 				if (Spine.clipper.isClipping()) {
-					Spine.clipper.clipTriangles(this.verticesCache, numFloats, triangles, triangles.length, uvs, this.lightColor, this.darkColor, useDarkColor);
+					Spine.clipper.clipTriangles(this.verticesCache, triangles, triangles.length, uvs, this.lightColor, this.darkColor, useDarkColor);
 
 					finalVertices = Spine.clipper.clippedVertices;
 					finalVerticesLength = finalVertices.length;
@@ -323,6 +465,7 @@ export class Spine extends Container {
 							verts[tempV++] = this.darkColor.r;
 							verts[tempV++] = this.darkColor.g;
 							verts[tempV++] = this.darkColor.b;
+							verts[tempV++] = this.darkColor.a;
 						}
 					}
 					finalVertices = this.verticesCache;
@@ -337,16 +480,17 @@ export class Spine extends Container {
 				}
 
 				const mesh = this.getMeshForSlot(slot);
-				mesh.zIndex = i;
+				mesh.zIndex = zIndex;
 				mesh.updateFromSpineData(texture, slot.data.blendMode, slot.data.name, finalVertices, finalVerticesLength, finalIndices, finalIndicesLength, useDarkColor);
 			}
 
 			Spine.clipper.clipEndWithSlot(slot);
+			this.pixiMaskCleanup(slot);
 		}
 		Spine.clipper.clipEnd();
 	}
 
-	/** 
+	/**
 	 * Set the position of the bone given in input through a {@link IPointData}.
 	 * @param bone: the bone name or the bone instance to set the position
 	 * @param outPos: the new position of the bone.
@@ -372,7 +516,7 @@ export class Spine extends Container {
 		}
 	}
 
-	/** 
+	/**
 	 * Return the position of the bone given in input into an {@link IPointData}.
 	 * @param bone: the bone name or the bone instance to get the position from
 	 * @param outPos: an optional {@link IPointData} to use to return the bone position, rathern than instantiating a new object.
@@ -398,10 +542,30 @@ export class Spine extends Container {
 		return outPos;
 	}
 
+	/** Converts a point from the skeleton coordinate system to the Pixi world coordinate system. */
+	skeletonToPixiWorldCoordinates (point: { x: number; y: number }) {
+		this.worldTransform.apply(point, point);
+	}
+
+	/** Converts a point from the Pixi world coordinate system to the skeleton coordinate system. */
+	pixiWorldCoordinatesToSkeleton (point: { x: number; y: number }) {
+		this.worldTransform.applyInverse(point, point);
+	}
+
+	/** Converts a point from the Pixi world coordinate system to the bone's local coordinate system. */
+	pixiWorldCoordinatesToBone (point: { x: number; y: number }, bone: Bone) {
+		this.pixiWorldCoordinatesToSkeleton(point);
+		if (bone.parent) {
+			bone.parent.worldToLocal(point as Vector2);
+		} else {
+			bone.worldToLocal(point as Vector2);
+		}
+	}
+
 	/** A cache containing skeleton data and atlases already loaded by {@link Spine.from}. */
 	public static readonly skeletonCache: Record<string, SkeletonData> = Object.create(null);
 
-	/** 
+	/**
 	 * Use this method to instantiate a Spine game object.
 	 * Before instantiating a Spine game object, the skeleton (`.skel` or `.json`) and the atlas text files must be loaded into the Assets. For example:
 	 * ```
@@ -411,7 +575,7 @@ export class Spine extends Container {
 	 * ```
 	 * Once a Spine game object is created, its skeleton data is cached into {@link Spine.skeletonCache} using the key:
 	 * `${skeletonAssetName}-${atlasAssetName}-${options?.scale ?? 1}`
-	 * 
+	 *
 	 * @param skeletonAssetName - the asset name for the skeleton `.skel` or `.json` file previously loaded into the Assets
 	 * @param atlasAssetName - the asset name for the atlas file previously loaded into the Assets
 	 * @param options - Options to configure the Spine game object
@@ -439,6 +603,11 @@ export class Spine extends Container {
 	public set tint (value: number) {
 		Color.rgb888ToColor(this.skeleton.color, value);
 	}
+}
+
+type PixiMaskSource = {
+	slot: Slot,
+	computed: boolean, // prevent to reculaculate vertices for a mask clipping multiple pixi objects
 }
 
 Skeleton.yDown = true;

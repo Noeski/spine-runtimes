@@ -135,6 +135,7 @@ typedef struct _spine_render_command {
 	float *positions;
 	float *uvs;
 	int32_t *colors;
+    int32_t *darkColors;
 	int32_t numVertices;
 	uint16_t *indices;
 	int32_t numIndices;
@@ -293,6 +294,16 @@ spine_atlas spine_atlas_load(const utf8 *atlasData) {
 int32_t spine_atlas_get_num_image_paths(spine_atlas atlas) {
 	if (!atlas) return 0;
 	return ((_spine_atlas *) atlas)->numImagePaths;
+}
+
+spine_bool spine_atlas_is_pma(spine_atlas atlas) {
+	if (!atlas) return 0;
+	Atlas *_atlas = static_cast<Atlas *>(((_spine_atlas *) atlas)->atlas);
+	if (_atlas->getPages().size() > 0) {
+		return _atlas->getPages()[0]->pma;
+	} else {
+		return 0;
+	}
 }
 
 utf8 *spine_atlas_get_image_path(spine_atlas atlas, int32_t index) {
@@ -643,6 +654,7 @@ static _spine_render_command *spine_render_command_create(BlockAllocator &alloca
 	cmd->positions = allocator.allocate<float>(numVertices << 1);
 	cmd->uvs = allocator.allocate<float>(numVertices << 1);
 	cmd->colors = allocator.allocate<int32_t>(numVertices);
+    cmd->darkColors = allocator.allocate<int32_t>(numVertices);
 	cmd->numVertices = numVertices;
 	cmd->indices = allocator.allocate<uint16_t>(numIndices);
 	cmd->numIndices = numIndices;
@@ -687,6 +699,7 @@ static _spine_render_command *batch_sub_commands(BlockAllocator &allocator, Vect
 	float *positions = batched->positions;
 	float *uvs = batched->uvs;
 	int32_t *colors = batched->colors;
+    int32_t *darkColors = batched->darkColors;
 	uint16_t *indices = batched->indices;
 	int indicesOffset = 0;
 	for (int i = first; i <= last; i++) {
@@ -694,12 +707,14 @@ static _spine_render_command *batch_sub_commands(BlockAllocator &allocator, Vect
 		memcpy(positions, cmd->positions, sizeof(float) * 2 * cmd->numVertices);
 		memcpy(uvs, cmd->uvs, sizeof(float) * 2 * cmd->numVertices);
 		memcpy(colors, cmd->colors, sizeof(int32_t) * cmd->numVertices);
+        memcpy(darkColors, cmd->darkColors, sizeof(int32_t) * cmd->numVertices);
 		for (int ii = 0; ii < cmd->numIndices; ii++)
 			indices[ii] = cmd->indices[ii] + indicesOffset;
 		indicesOffset += cmd->numVertices;
 		positions += 2 * cmd->numVertices;
 		uvs += 2 * cmd->numVertices;
 		colors += cmd->numVertices;
+        darkColors += cmd->numVertices;
 		indices += cmd->numIndices;
 	}
 	return batched;
@@ -718,9 +733,16 @@ static _spine_render_command *batch_commands(BlockAllocator &allocator, Vector<_
 	int numIndices = first->numIndices;
 	while (i <= (int) commands.size()) {
 		_spine_render_command *cmd = i < (int) commands.size() ? commands[i] : nullptr;
+
+        if (cmd && cmd->numVertices == 0 && cmd->numIndices == 0) {
+            i++;
+            continue;
+        }
+
 		if (cmd != nullptr && cmd->atlasPage == first->atlasPage &&
 			cmd->blendMode == first->blendMode &&
 			cmd->colors[0] == first->colors[0] &&
+            cmd->darkColors[0] == first->darkColors[0] &&
 			numIndices + cmd->numIndices < 0xffff) {
 			numVertices += cmd->numVertices;
 			numIndices += cmd->numIndices;
@@ -826,6 +848,11 @@ spine_render_command spine_skeleton_drawable_render(spine_skeleton_drawable draw
 		uint8_t b = static_cast<uint8_t>(skeleton->getColor().b * slot.getColor().b * attachmentColor->b * 255);
 		uint8_t a = static_cast<uint8_t>(skeleton->getColor().a * slot.getColor().a * attachmentColor->a * 255);
 		uint32_t color = (a << 24) | (r << 16) | (g << 8) | b;
+        uint32_t darkColor = 0xff000000;
+        if (slot.hasDarkColor()) {
+            Color &slotDarkColor = slot.getDarkColor();
+            darkColor = 0xff000000 | (static_cast<uint8_t>(slotDarkColor.r * 255) << 16)| (static_cast<uint8_t>(slotDarkColor.g * 255) << 8)| static_cast<uint8_t>(slotDarkColor.b * 255);
+        }
 
 		if (clipper.isClipping()) {
 			clipper.clipTriangles(*worldVertices, *indices, *uvs, 2);
@@ -840,7 +867,10 @@ spine_render_command spine_skeleton_drawable_render(spine_skeleton_drawable draw
 		_drawable->renderCommands.add(cmd);
 		memcpy(cmd->positions, vertices->buffer(), (verticesCount << 1) * sizeof(float));
 		memcpy(cmd->uvs, uvs->buffer(), (verticesCount << 1) * sizeof(float));
-		for (int ii = 0; ii < verticesCount; ii++) cmd->colors[ii] = color;
+		for (int ii = 0; ii < verticesCount; ii++) {
+            cmd->colors[ii] = color;
+            cmd->darkColors[ii] = darkColor;
+        }
 		memcpy(cmd->indices, indices->buffer(), indices->size() * sizeof(uint16_t));
 		clipper.clipEnd(slot);
 	}
@@ -883,6 +913,11 @@ float *spine_render_command_get_uvs(spine_render_command command) {
 int32_t *spine_render_command_get_colors(spine_render_command command) {
 	if (!command) return nullptr;
 	return ((_spine_render_command *) command)->colors;
+}
+
+int32_t *spine_render_command_get_dark_colors(spine_render_command command) {
+    if (!command) return nullptr;
+    return ((_spine_render_command *) command)->darkColors;
 }
 
 int32_t spine_render_command_get_num_vertices(spine_render_command command) {
@@ -1412,6 +1447,18 @@ float spine_track_entry_get_track_complete(spine_track_entry entry) {
 	return _entry->getTrackComplete();
 }
 
+spine_bool spine_track_entry_was_applied(spine_track_entry entry) {
+    if (entry == nullptr) return false;
+    TrackEntry *_entry = (TrackEntry *) entry;
+    return _entry->wasApplied();
+}
+
+spine_bool spine_track_entry_is_next_ready(spine_track_entry entry) {
+    if (entry == nullptr) return false;
+    TrackEntry *_entry = (TrackEntry *) entry;
+    return _entry->isNextReady();
+}
+
 // Skeleton
 
 void spine_skeleton_update_cache(spine_skeleton skeleton) {
@@ -1525,7 +1572,9 @@ spine_bounds spine_skeleton_get_bounds(spine_skeleton skeleton) {
 	if (skeleton == nullptr) return (spine_bounds) bounds;
 	Skeleton *_skeleton = (Skeleton *) skeleton;
 	Vector<float> vertices;
-	_skeleton->getBounds(bounds->x, bounds->y, bounds->width, bounds->height, vertices);
+	SkeletonClipping clipper;
+
+	_skeleton->getBounds(bounds->x, bounds->y, bounds->width, bounds->height, vertices, &clipper);
 	return (spine_bounds) bounds;
 }
 
@@ -1671,6 +1720,13 @@ void spine_skeleton_set_y(spine_skeleton skeleton, float y) {
 	if (skeleton == nullptr) return;
 	Skeleton *_skeleton = (Skeleton *) skeleton;
 	_skeleton->setY(y);
+}
+
+void spine_skeleton_set_scale(spine_skeleton skeleton, float scaleX, float scaleY) {
+    if (skeleton == nullptr) return;
+    Skeleton *_skeleton = (Skeleton *) skeleton;
+    _skeleton->setScaleX(scaleX);
+    _skeleton->setScaleY(scaleY);
 }
 
 float spine_skeleton_get_scale_x(spine_skeleton skeleton) {
@@ -1905,7 +1961,7 @@ void spine_slot_data_set_dark_color(spine_slot_data slot, float r, float g, floa
 	_slot->getDarkColor().set(r, g, b, a);
 }
 
-spine_bool spine_slot_data_has_dark_color(spine_slot_data slot) {
+spine_bool spine_slot_data_get_has_dark_color(spine_slot_data slot) {
 	if (slot == nullptr) return 0;
 	SlotData *_slot = (SlotData *) slot;
 	return _slot->hasDarkColor() ? -1 : 0;
@@ -2159,7 +2215,7 @@ void spine_bone_data_set_inherit(spine_bone_data data, spine_inherit inherit) {
 	_data->setInherit((Inherit) inherit);
 }
 
-spine_bool spine_bone_data_is_skin_required(spine_bone_data data) {
+spine_bool spine_bone_data_get_is_skin_required(spine_bone_data data) {
 	if (data == nullptr) return 0;
 	BoneData *_data = (BoneData *) data;
 	return _data->isSkinRequired() ? -1 : 0;
@@ -2489,7 +2545,7 @@ float spine_bone_get_a_shear_y(spine_bone bone) {
 	return _bone->getAShearY();
 }
 
-void spine_bone_set_shear_a_y(spine_bone bone, float shearY) {
+void spine_bone_set_a_shear_y(spine_bone bone, float shearY) {
 	if (bone == nullptr) return;
 	Bone *_bone = (Bone *) bone;
 	_bone->setAShearY(shearY);
@@ -3373,6 +3429,12 @@ spine_bool spine_ik_constraint_data_get_uniform(spine_ik_constraint_data data) {
 	if (data == nullptr) return 0;
 	IkConstraintData *_data = (IkConstraintData *) data;
 	return _data->getUniform() ? -1 : 0;
+}
+
+void spine_ik_constraint_data_set_uniform(spine_ik_constraint_data data, spine_bool uniform) {
+	if (data == nullptr) return;
+	IkConstraintData *_data = (IkConstraintData *) data;
+	_data->setUniform(uniform);
 }
 
 float spine_ik_constraint_data_get_mix(spine_ik_constraint_data data) {
@@ -4660,7 +4722,7 @@ float spine_physics_constraint_get_last_time(spine_physics_constraint constraint
 	return _constraint->getLastTime();
 }
 
-void spine_physics_constraint_reset(spine_physics_constraint constraint) {
+void spine_physics_constraint_reset_fully(spine_physics_constraint constraint) {
 	if (constraint == nullptr) return;
 	PhysicsConstraint *_constraint = (PhysicsConstraint *) constraint;
 	_constraint->reset();
