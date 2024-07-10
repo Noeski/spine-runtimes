@@ -773,6 +773,7 @@ void test(SkeletonData *skeletonData, Atlas *atlas) {
 }
 
 DebugExtension dbgExtension(SpineExtension::getInstance());
+extern spine::SkeletonRenderer *skeletonRenderer;
 
 int main() {
 	SpineExtension::setInstance(&dbgExtension);
@@ -786,7 +787,6 @@ int main() {
 	testcase(spineboy, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.62f);
 	testcase(ikDemo, "data/spineboy-pro.json", "data/spineboy-pro.skel", "data/spineboy-pma.atlas", 0.6f);
 	testcase(vine, "data/vine-pro.json", "data/vine-pro.skel", "data/vine-pma.atlas", 0.5f);
-	testcase(dragon, "data/dragon-ess.json", "data/dragon-ess.skel", "data/dragon-pma.atlas", 0.6f);
 	testcase(owl, "data/owl-pro.json", "data/owl-pro.skel", "data/owl-pma.atlas", 0.5f);
 	testcase(coin, "data/coin-pro.json", "data/coin-pro.skel", "data/coin-pma.atlas", 0.5f);
 	testcase(raptor, "data/raptor-pro.json", "data/raptor-pro.skel", "data/raptor-pma.atlas", 0.5f);
@@ -794,6 +794,7 @@ int main() {
 	testcase(goblins, "data/goblins-pro.json", "data/goblins-pro.skel", "data/goblins-pma.atlas", 1.4f);
 	testcase(stretchyman, "data/stretchyman-pro.json", "data/stretchyman-pro.skel", "data/stretchyman-pma.atlas", 0.6f);
 
+    delete skeletonRenderer;
 	dbgExtension.reportLeaks();
 	return 0;
 }

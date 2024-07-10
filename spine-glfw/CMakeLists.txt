@@ -1,18 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(spine-glfw)
-if(MSVC)
-    message("MSCV detected")
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_CRT_SECURE_NO_WARNINGS")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_CRT_SECURE_NO_WARNINGS")
-else()
-    message("${CMAKE_C_FLAGS}")
-    message("${CMAKE_CXX_FLAGS}")
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter -std=c99")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wno-unused-parameter -std=c++11 -fno-exceptions -fno-rtti")
-endif()
+
+# Default flags
+include(${CMAKE_SOURCE_DIR}/../flags.cmake)
+
+# Add spine-cpp
+add_subdirectory(${CMAKE_SOURCE_DIR}/../spine-cpp ${CMAKE_BINARY_DIR}/spine-cpp-build)
 
 include(FetchContent)
-
 # Fetch GLFW
 FetchContent_Declare(
         glfw
@@ -46,7 +41,7 @@ find_package(OpenGL REQUIRED)
 # spine-glfw library
 add_library(spine-glfw STATIC src/spine-glfw.cpp src/spine-glfw.h src/stb_image.h)
 target_link_libraries(spine-glfw PRIVATE glbinding::glbinding)
-target_link_libraries(spine-glfw LINK_PUBLIC spine-cpp spine-cpp-lite)
+target_link_libraries(spine-glfw LINK_PUBLIC spine-cpp)
 
 # Example
 add_executable(spine-glfw-example example/main.cpp)
