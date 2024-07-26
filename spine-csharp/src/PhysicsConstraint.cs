@@ -158,7 +158,7 @@ namespace Spine {
 					ux = bx;
 					uy = by;
 				} else {
-					float a = remaining, i = inertia, t = data.step, f = skeleton.data.referenceScale, d = -1;
+					float a = remaining, i = inertia, t = remaining/*data.step*/, f = skeleton.data.referenceScale, d = -1;
 					float qx = data.limit * delta, qy = qx * Math.Abs(skeleton.ScaleY);
 					qx *= Math.Abs(skeleton.ScaleX);
 
@@ -173,7 +173,7 @@ namespace Spine {
 							yOffset += u > qy ? qy : u < -qy ? -qy : u;
 							uy = by;
 						}
-						if (a >= t) {
+						if (a >= t && t > 0) {
 							d = (float)Math.Pow(damping, 60 * t);
 							float m = massInverse * t, e = strength, w = wind * f, g = (Bone.yDown ? -gravity : gravity) * f;
 							do {
@@ -222,7 +222,7 @@ namespace Spine {
 							if (r > 0) scaleOffset += (dx * c + dy * s) * i / r;
 						}
 						a = remaining;
-						if (a >= t) {
+						if (a >= t && t > 0) {
 							if (d == -1) d = (float)Math.Pow(damping, 60 * t);
 							float m = massInverse * t, e = strength, w = wind, g = (Bone.yDown ? -gravity : gravity), h = l / f;
 							while (true) {
