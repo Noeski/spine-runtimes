@@ -2,7 +2,7 @@ group = "com.esotericsoftware.spine"
 version = "4.2.0"
 
 ext {
-    libgdxVersion = "1.12.1"
+    libgdxVersion = "1.12.2-SNAPSHOT"
     javaVersion = 8
 }
 
@@ -16,15 +16,23 @@ allprojects {
         maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
         mavenCentral()
     }
+
+    tasks.withType(JavaCompile) {
+        sourceCompatibility = javaVersion.toString()
+        targetCompatibility = javaVersion.toString()
+    }
 }
 
 project("spine-libgdx") {
     apply plugin: "java-library"
+    apply plugin: "maven-publish"
+    apply plugin: "signing"
 
     dependencies {
         implementation "com.badlogicgames.gdx:gdx:$libgdxVersion"
     }
 }
+apply from: 'publishing.gradle'
 
 project("spine-skeletonviewer") {
     jar {
