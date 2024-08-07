@@ -55,6 +55,8 @@ namespace Spine {
 		readonly Skeleton skeleton;
 		float remaining, lastTime;
 
+		private const float maximumPhysicsTimestep = 0.1f;
+
 		public PhysicsConstraint (PhysicsConstraintData data, Skeleton skeleton) {
 			if (data == null) throw new ArgumentNullException("data", "data cannot be null.");
 			if (skeleton == null) throw new ArgumentNullException("skeleton", "skeleton cannot be null.");
@@ -158,7 +160,7 @@ namespace Spine {
 					ux = bx;
 					uy = by;
 				} else {
-					float a = remaining, i = inertia, t = remaining/*data.step*/, f = skeleton.data.referenceScale, d = -1;
+					float a = remaining, i = inertia, f = skeleton.data.referenceScale, d = -1, lastT = -1;
 					float qx = data.limit * delta, qy = qx * Math.Abs(skeleton.ScaleY);
 					qx *= Math.Abs(skeleton.ScaleX);
 
@@ -173,10 +175,18 @@ namespace Spine {
 							yOffset += u > qy ? qy : u < -qy ? -qy : u;
 							uy = by;
 						}
-						if (a >= t && t > 0) {
-							d = (float)Math.Pow(damping, 60 * t);
-							float m = massInverse * t, e = strength, w = wind * f, g = (Bone.yDown ? -gravity : gravity) * f;
+						if (a > 0) {
+							float e = strength, w = wind * f, g = (Bone.yDown ? -gravity : gravity) * f;
 							do {
+								float t = (float)Math.Min(a, maximumPhysicsTimestep);
+								float m = massInverse * t;
+
+								if (t != lastT) {
+									d = (float)Math.Pow(damping, 60 * t);
+
+									lastT = t;
+								}
+
 								if (x) {
 									xVelocity += (w - xOffset * e) * m;
 									xOffset += xVelocity * t;
@@ -188,7 +198,7 @@ namespace Spine {
 									yVelocity *= d;
 								}
 								a -= t;
-							} while (a >= t);
+							} while (a > 0);
 						}
 						if (x) bone.worldX += xOffset * mix * data.x;
 						if (y) bone.worldY += yOffset * mix * data.y;
@@ -222,10 +232,18 @@ namespace Spine {
 							if (r > 0) scaleOffset += (dx * c + dy * s) * i / r;
 						}
 						a = remaining;
-						if (a >= t && t > 0) {
-							if (d == -1) d = (float)Math.Pow(damping, 60 * t);
-							float m = massInverse * t, e = strength, w = wind, g = (Bone.yDown ? -gravity : gravity), h = l / f;
+						if (a > 0) {
+							float e = strength, w = wind, g = (Bone.yDown ? -gravity : gravity), h = l / f;
 							while (true) {
+								float t = (float)Math.Min(a, maximumPhysicsTimestep);
+								float m = massInverse * t;
+
+								if (t != lastT) {
+									d = (float)Math.Pow(damping, 60 * t);
+
+									lastT = t;
+								}
+
 								a -= t;
 								if (scaleX) {
 									scaleVelocity += (w * c - g * s - scaleOffset * e) * m;
@@ -236,11 +254,11 @@ namespace Spine {
 									rotateVelocity -= ((w * s + g * c) * h + rotateOffset * e) * m;
 									rotateOffset += rotateVelocity * t;
 									rotateVelocity *= d;
-									if (a < t) break;
+									if (a <= 0) break;
 									float r = rotateOffset * mr + ca;
 									c = (float)Math.Cos(r);
 									s = (float)Math.Sin(r);
-								} else if (a < t) //
+								} else if (a <= 0) //
 									break;
 							}
 						}
