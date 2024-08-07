@@ -1024,6 +1024,11 @@ namespace Spine {
 			Bone bone = skeleton.bones.Items[boneIndex];
 			if (!bone.active) return;
 
+			if (direction == MixDirection.Out) {
+				if (blend == MixBlend.Setup) bone.inherit = bone.data.inherit;
+				return;
+			}
+
 			float[] frames = this.frames;
 			if (time < frames[0]) {
 				if (blend == MixBlend.Setup || blend == MixBlend.First) bone.inherit = bone.data.inherit;
