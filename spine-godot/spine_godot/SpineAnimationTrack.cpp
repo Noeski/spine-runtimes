@@ -27,6 +27,8 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+#ifndef SPINE_GODOT_EXTENSION
+
 #include "SpineAnimationTrack.h"
 #if VERSION_MAJOR > 3
 #include "core/config/engine.h"
@@ -37,7 +39,7 @@
 #include "scene/resources/animation.h"
 
 #ifdef TOOLS_ENABLED
-#include "godot/editor/editor_node.h"
+#include "editor/editor_node.h"
 #include "editor/plugins/animation_player_editor_plugin.h"
 #include "editor/plugins/animation_tree_editor_plugin.h"
 #endif
@@ -182,8 +184,8 @@ void SpineAnimationTrack::setup_animation_player() {
 #if VERSION_MAJOR > 3
 		List<StringName> animation_libraries;
 		animation_player->get_animation_library_list(&animation_libraries);
-		for (int i = 0; i < animation_libraries.size(); i++) {
-			animation_player->remove_animation_library(animation_libraries[i]);
+		for (auto iter = animation_libraries.front(); iter; iter = iter->next()) {
+			animation_player->remove_animation_library(iter->get());
 		}
 #else
 		List<StringName> animation_names;
@@ -554,3 +556,5 @@ void SpineAnimationTrack::set_debug(bool _debug) {
 bool SpineAnimationTrack::get_debug() {
 	return debug;
 }
+
+#endif

@@ -29,6 +29,7 @@
 
 #pragma once
 
+#ifndef SPINE_GODOT_EXTENSION
 #include "SpineSprite.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
@@ -133,3 +134,5 @@ public:
 
 	bool get_debug();
 };
+
+#endif

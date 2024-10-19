@@ -88,6 +88,7 @@
 - **Breaking**: Starting with Unreal Engine 5.3 imported `.skel`/`.json` and `.atlas` files in the same folder must NOT have a common prefix. E.g. `skeleton.json` and `skeleton.atlas` will not work. Make sure to rename at least one of the two files so there is no prefix collision, e.g. `skeleton-data.json` and `skeleton.atlas`.
 - Added compatibility with UE 5.3
 - Added more example maps
+- Added blueprint-callable methods `PhysicsTranslate()`, `PhysicsRotate()` and `ResetPhysicsConstraints()` (which will reset all physics constraints in the skeleton) to `SpineSkeletonComponent` and `SpineWidget`.
 
 ### Godot
 
@@ -162,6 +163,7 @@
   - SkeletonGraphic: You can now offset the skeleton mesh relative to the pivot via a newly added green circle handle. This allows you to e.g. frame only the face of a skeleton inside a masked frame. Previously offsetting the pivot downwards fails when `Layout Scale Mode` scales the mesh smaller and towards the pivot (e.g. the feet) and thus out of the frame. Now you can keep the pivot in the center of the `RectTransform` while offsetting only the mesh downwards, keeping the desired skeleton area (e.g. the face) centered while resizing. Moving the new larger green circle handle moves the mesh offset, while moving the blue pivot circle handle moves the pivot as usual.
   - `Universal Render Pipeline/Spine/Skeleton` shader now performs proper alpha-testing when `Depth Write` is enabled, using the existing `Shadow alpha cutoff` parameter.
   - `SkeletonRootMotion` components now provide a public `Initialize()` method which is automatically called when calling `skeletonAnimation.Initialize(true)` to update the necessary skeleton references. If a different root bone shall be used, be sure to set `skeletonRootMotion.rootMotionBoneName` before calling `skeletonAnimation.Initialize(true)`.
+  - Skeleton Mecanim: Added new `Mix Mode` `Match`. When selected, Spine animation weights are calculated to best match the provided Mecanim clip weights. This mix mode is recommended on any layer using blend tree nodes.
 
 - **Breaking changes**
 
@@ -342,6 +344,7 @@
   - `VertexEffect` has been removed.
 
 ### Cocos2d-x
+- Renamed `SkeletonRenderer` to `SkeletonRendererCocos2dX` to avoid name clash with spine-cpp class.
 
 ### SFML
 

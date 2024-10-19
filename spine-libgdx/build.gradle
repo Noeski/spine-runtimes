@@ -1,9 +1,5 @@
-group = "com.esotericsoftware.spine"
-version = "4.2.0"
-
 ext {
     libgdxVersion = "1.12.2-SNAPSHOT"
-    javaVersion = 8
 }
 
 allprojects {
@@ -17,9 +13,10 @@ allprojects {
         mavenCentral()
     }
 
-    tasks.withType(JavaCompile) {
-        sourceCompatibility = javaVersion.toString()
-        targetCompatibility = javaVersion.toString()
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = '1.7'
+        targetCompatibility = '1.7'
+        options.release.set(7)  // Ensures Java 8 bytecode is produced
     }
 }
 
@@ -45,6 +42,18 @@ project("spine-skeletonviewer") {
         from {
             configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
         }
+
+        dependsOn(project(":spine-libgdx").tasks.named('jar'))
+    }
+
+    tasks.named('build').configure {
+        dependsOn(tasks.named('jar'))
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
+        options.release.set(8)  // Ensures Java 8 bytecode is produced
     }
 }
 
@@ -56,8 +65,11 @@ configure(subprojects - project("spine-libgdx")) {
         implementation "com.badlogicgames.gdx:gdx:$libgdxVersion"
         implementation "com.badlogicgames.gdx:gdx-platform:$libgdxVersion:natives-desktop"
         implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$libgdxVersion"
-        implementation "com.badlogicgames.gdx:gdx-lwjgl3-glfw-awt-macos:$libgdxVersion"
         implementation "com.badlogicgames.gdx:gdx-box2d:$libgdxVersion"
         implementation "com.badlogicgames.gdx:gdx-box2d-platform:$libgdxVersion:natives-desktop"
     }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    println "Building with sourceCompatibility = ${sourceCompatibility}, targetCompatibility = ${targetCompatibility}"
 }

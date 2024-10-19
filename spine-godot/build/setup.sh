@@ -44,7 +44,6 @@ pushd ..
 rm -rf godot
 git clone --depth 1 $repo -b $branch
 if [ $dev = "true" ]; then
-	cp -r .idea godot
 	cp build/custom.py godot
 	if [ "$mono" = "true" ]; then
 		echo "" >> godot/custom.py
@@ -53,18 +52,6 @@ if [ $dev = "true" ]; then
 	cp ../formatters/.clang-format .
 	rm -rf example/.import
 	rm -rf example/.godot
-
-	#if [ "$OSTYPE" = "msys" ]; then
-	#	pushd godot
-	#	if [[ $branch == 3* ]]; then
-	#		echo "Applying V3 Live++ patch"
-	#		git apply ../build/livepp.patch
-	#	else
-	#		echo "Applying V4 Live++ patch"
-	#		git apply ../build/livepp-v4.patch
-	#	fi
-	#	popd
-	#fi
 
 	if [ `uname` == 'Darwin' ] && [ ! -d "$HOME/VulkanSDK" ]; then
 		./build/install-macos-vulkan-sdk.sh
