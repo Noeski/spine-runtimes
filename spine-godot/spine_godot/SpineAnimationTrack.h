@@ -39,9 +39,11 @@ class SpineAnimationTrack : public Node {
 protected:
 	// These are not exposed in the inspector, see SpineAnimationTrackInspectorPlugin.
 	// Instead, they are are keyed by the animations created in setup_animation_player
-	// and primarily used for animation player editor support like scrubbing.
+	// and primarily used for animation player editor support like scrubbing and playing
+	// back the .
 	String animation_name;
 	bool loop;
+	bool animation_changed;
 
 	// These can be set by the user.
 	int track_index;

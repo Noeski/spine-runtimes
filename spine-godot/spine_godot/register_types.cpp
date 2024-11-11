@@ -80,12 +80,14 @@ static void editor_init_callback() {
 #ifdef SPINE_GODOT_EXTENSION
 void initialize_spine_godot_module(ModuleInitializationLevel level) {
 	if (level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+#ifdef TOOLS_ENABLED
 		GDREGISTER_CLASS(SpineAtlasResourceImportPlugin);
 		GDREGISTER_CLASS(SpineJsonResourceImportPlugin);
 		GDREGISTER_CLASS(SpineBinaryResourceImportPlugin);
 		GDREGISTER_CLASS(SpineSkeletonDataResourceInspectorPlugin);
 		GDREGISTER_CLASS(SpineEditorPlugin);
 		EditorPlugins::add_plugin_class(StringName("SpineEditorPlugin"));
+#endif
 	}
 	if (level != MODULE_INITIALIZATION_LEVEL_SCENE) return;
 #else

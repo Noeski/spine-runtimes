@@ -164,6 +164,7 @@
   - `Universal Render Pipeline/Spine/Skeleton` shader now performs proper alpha-testing when `Depth Write` is enabled, using the existing `Shadow alpha cutoff` parameter.
   - `SkeletonRootMotion` components now provide a public `Initialize()` method which is automatically called when calling `skeletonAnimation.Initialize(true)` to update the necessary skeleton references. If a different root bone shall be used, be sure to set `skeletonRootMotion.rootMotionBoneName` before calling `skeletonAnimation.Initialize(true)`.
   - Skeleton Mecanim: Added new `Mix Mode` `Match`. When selected, Spine animation weights are calculated to best match the provided Mecanim clip weights. This mix mode is recommended on any layer using blend tree nodes.
+  - URP Shaders: Added `ZWrite` variant of outline shader `Universal Render Pipeline/Spine/Outline/Skeleton-OutlineOnly ZWrite`. Suitable for e.g. depth of field (DoF) effect where writing to the depth buffer is required. Note that for DoF effect, `Render Queue` needs to be set to `Alpha Test`.
 
 - **Breaking changes**
 

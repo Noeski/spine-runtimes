@@ -11,3 +11,5 @@ The new `SpineVisualElement` can be found in the Unity `UI Builder` window under
 ### Limitations
 
 Premultiply-alpha (PMA) atlas textures are not supported due to limitations of the UI Toolkit `VisualElement` API, not allowing custom shaders. Please export your atlas textures as straight alpha to avoid artifacts.
+
+Custom slot blend modes (additive, muliply, screen) are not supported due to the same custom shader limitation.

@@ -152,7 +152,7 @@ class Bone implements Updatable {
 		worldX = pa * x + pb * y + parent.worldX;
 		worldY = pc * x + pd * y + parent.worldY;
 
-		switch (data.inherit) {
+		switch (inherit) {
 			case Inherit.normal:
 				var rx:Float = (rotation + shearX) * MathUtils.degRad;
 				var ry:Float = (rotation + 90 + shearY) * MathUtils.degRad;
@@ -211,7 +211,7 @@ class Bone implements Updatable {
 				za *= s;
 				zc *= s;
 				s = Math.sqrt(za * za + zc * zc);
-				if (data.inherit == Inherit.noScale && ((pa * pd - pb * pc < 0) != ((sx < 0) != (sy < 0)))) {
+				if (inherit == Inherit.noScale && ((pa * pd - pb * pc < 0) != ((sx < 0) != (sy < 0)))) {
 					s = -s;
 				}
 				rotation = Math.PI / 2 + Math.atan2(zc, za);

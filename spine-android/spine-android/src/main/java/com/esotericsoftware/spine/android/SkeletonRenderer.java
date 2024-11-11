@@ -112,6 +112,7 @@ public class SkeletonRenderer {
 			short[] indices = null;
 			Attachment attachment = slot.getAttachment();
 			if (attachment == null) {
+				clipper.clipEnd(slot);
 				continue;
 			}
 
