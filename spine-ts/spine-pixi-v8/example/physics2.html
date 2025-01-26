@@ -76,12 +76,10 @@
         const buttonContainer = new PIXI.Container();
         buttonContainer.position.set(0, 0);
 
-        const buttonBackground = new PIXI.Graphics();
-        buttonBackground.beginFill(0x000000); // Button background color
-        buttonBackground.drawRoundedRect(0, 0, 140, 100, 5); // Button dimensions
-        buttonBackground.endFill();
+        const buttonBackground = new PIXI.Graphics()
+          .roundRect(0, 0, 140, 100, 5)
+          .fill({ color: 0x000000, alpha: .7 });
         buttonContainer.addChild(buttonBackground);
-        buttonContainer.alpha = 0.7;
 
         const fontStyle = {
           fill: 0xdddddd,
@@ -116,7 +114,7 @@
             document.exitFullscreen();
             textButton.text = "Fullscreen";
           } else {
-            app.renderer.view.requestFullscreen();
+            app.renderer.canvas.requestFullscreen();
             textButton.text = "Windowed";
           }
           fsEnabled = !fsEnabled;

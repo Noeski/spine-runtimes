@@ -189,6 +189,10 @@ typedef enum spine_physics {
 
 typedef int32_t spine_bool;
 
+typedef void* (*spine_texture_loader_load_func)(const char *path);
+
+typedef void (*spine_texture_loader_unload_func)(void *texture);
+
 // @start: function_declarations
 
 SPINE_CPP_LITE_EXPORT int32_t spine_major_version();
@@ -210,6 +214,8 @@ SPINE_CPP_LITE_EXPORT float spine_vector_get_x(spine_vector vector);
 SPINE_CPP_LITE_EXPORT float spine_vector_get_y(spine_vector vector);
 
 SPINE_CPP_LITE_EXPORT spine_atlas spine_atlas_load(const utf8 *atlasData);
+// @ignore
+SPINE_CPP_LITE_EXPORT spine_atlas spine_atlas_load_callback(const utf8 *atlasData, const utf8 *atlasDir, spine_texture_loader_load_func load, spine_texture_loader_unload_func unload);
 SPINE_CPP_LITE_EXPORT int32_t spine_atlas_get_num_image_paths(spine_atlas atlas);
 SPINE_CPP_LITE_EXPORT utf8 *spine_atlas_get_image_path(spine_atlas atlas, int32_t index);
 SPINE_CPP_LITE_EXPORT spine_bool spine_atlas_is_pma(spine_atlas atlas);
@@ -630,6 +636,8 @@ SPINE_CPP_LITE_EXPORT const utf8 *spine_attachment_get_name(spine_attachment att
 SPINE_CPP_LITE_EXPORT spine_attachment_type spine_attachment_get_type(spine_attachment attachment);
 // @ignore
 SPINE_CPP_LITE_EXPORT spine_attachment spine_attachment_copy(spine_attachment attachment);
+// @optional
+SPINE_CPP_LITE_EXPORT spine_bounding_box_attachment spine_attachment_cast_to_bounding_box_attachment(spine_attachment attachment);
 SPINE_CPP_LITE_EXPORT void spine_attachment_dispose(spine_attachment attachment);
 
 SPINE_CPP_LITE_EXPORT spine_vector spine_point_attachment_compute_world_position(spine_point_attachment attachment, spine_bone bone);
@@ -1049,6 +1057,7 @@ SPINE_CPP_LITE_EXPORT void spine_texture_region_set_original_width(spine_texture
 SPINE_CPP_LITE_EXPORT int32_t spine_texture_region_get_original_height(spine_texture_region textureRegion);
 SPINE_CPP_LITE_EXPORT void spine_texture_region_set_original_height(spine_texture_region textureRegion, int32_t originalHeight);
 
+// @ignore
 SPINE_CPP_LITE_EXPORT spine_skeleton_bounds spine_skeleton_bounds_create();
 SPINE_CPP_LITE_EXPORT void spine_skeleton_bounds_dispose(spine_skeleton_bounds bounds);
 SPINE_CPP_LITE_EXPORT void spine_skeleton_bounds_update(spine_skeleton_bounds bounds, spine_skeleton skeleton, spine_bool updateAabb);

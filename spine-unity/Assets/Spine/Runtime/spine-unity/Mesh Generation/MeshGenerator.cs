@@ -1230,9 +1230,11 @@ namespace Spine.Unity {
 			// Zero the extra.
 			{
 				int listCount = vertexBuffer.Count;
-				Vector3 vector3zero = Vector3.zero;
+				// unfortunately even non-indexed vertices are still used by Unity's bounds computation,
+				// (considered a Unity bug), thus avoid Vector3.zero and use last vertex instead.
+				Vector3 extraVertex = listCount == 0 ? Vector3.zero : vbi[listCount - 1];
 				for (int i = listCount; i < vbiLength; i++)
-					vbi[i] = vector3zero;
+					vbi[i] = extraVertex;
 			}
 
 			// Set the vertex buffer.

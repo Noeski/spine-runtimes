@@ -28,7 +28,7 @@
  *****************************************************************************/
 
 import { Container, Graphics, Text } from 'pixi.js';
-import { Spine } from './Spine';
+import { Spine } from './Spine.js';
 import {
 	ClippingAttachment,
 	MeshAttachment,

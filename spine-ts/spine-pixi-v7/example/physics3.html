@@ -32,12 +32,12 @@
           scale: 0.25,
         });
 
+        // Set animation "FOA" on track 0, looped.
+        snowglobe.state.setAnimation(0, "shake", true);
+
         // Center the spine object on screen.
         snowglobe.x = window.innerWidth / 2;
         snowglobe.y = window.innerHeight / 2 + snowglobe.getBounds().height / 4;
-
-        // Set animation "FOA" on track 0, looped.
-        snowglobe.state.setAnimation(0, "shake", true);
 
         // Add the display object to the stage.
         app.stage.addChild(snowglobe);

@@ -42,7 +42,7 @@ import {
 	Ticker,
 	ViewContainer,
 } from 'pixi.js';
-import { ISpineDebugRenderer } from './SpineDebugRenderer';
+import { ISpineDebugRenderer } from './SpineDebugRenderer.js';
 import {
 	AnimationState,
 	AnimationStateData,
@@ -173,7 +173,7 @@ export class Spine extends ViewContainer {
 	private darkTint = false;
 	private _debug?: ISpineDebugRenderer | undefined = undefined;
 
-	readonly _slotsObject: Record<string, { slot: Slot, container: Container } | null> = Object.create(null);
+	readonly _slotsObject: Record<string, { slot: Slot, container: Container, followAttachmentTimeline: boolean } | null> = Object.create(null);
 	private clippingSlotToPixiMasks: Record<string, SlotsToClipping> = Object.create(null);
 
 	private getSlotFromRef (slotRef: number | string | Slot): Slot {
@@ -213,7 +213,6 @@ export class Spine extends ViewContainer {
 		this._debug = value;
 	}
 
-	private autoUpdateWarned = false;
 	private _autoUpdate = true;
 
 	public get autoUpdate (): boolean {
@@ -223,15 +222,14 @@ export class Spine extends ViewContainer {
 	public set autoUpdate (value: boolean) {
 		if (value) {
 			Ticker.shared.add(this.internalUpdate, this);
-			this.autoUpdateWarned = false;
-		}
-		else {
+		} else {
 			Ticker.shared.remove(this.internalUpdate, this);
 		}
 
 		this._autoUpdate = value;
 	}
 
+	private hasNeverUpdated = true;
 	constructor (options: SpineOptions | SkeletonData) {
 		if (options instanceof SkeletonData) {
 			options = {
@@ -257,27 +255,20 @@ export class Spine extends ViewContainer {
 		for (let i = 0; i < slots.length; i++) {
 			this.attachmentCacheData[i] = Object.create(null);
 		}
-
-		this._updateState(0);
 	}
 
 	/** If {@link Spine.autoUpdate} is `false`, this method allows to update the AnimationState and the Skeleton with the given delta. */
 	public update (dt: number): void {
-		if (this.autoUpdate && !this.autoUpdateWarned) {
-			console.warn('You are calling update on a Spine instance that has autoUpdate set to true. This is probably not what you want.');
-			this.autoUpdateWarned = true;
-		}
-
 		this.internalUpdate(0, dt);
 	}
 
 	protected internalUpdate (_deltaFrame: any, deltaSeconds?: number): void {
 		// Because reasons, pixi uses deltaFrames at 60fps.
 		// We ignore the default deltaFrames and use the deltaSeconds from pixi ticker.
-		this._updateState(deltaSeconds ?? Ticker.shared.deltaMS / 1000);
+		this._updateAndApplyState(deltaSeconds ?? Ticker.shared.deltaMS / 1000);
 	}
 
-	get bounds () {
+	override get bounds () {
 		if (this._boundsDirty) {
 			this.updateBounds();
 		}
@@ -343,35 +334,16 @@ export class Spine extends ViewContainer {
 	}
 
 	/**
-	 * Will update the state based on the specified time, this will not apply the state to the skeleton
-	 * as this is differed until the `applyState` method is called.
+	 * Advance the state and skeleton by the given time, then update slot objects too.
+	 * The container transform is not updated.
 	 *
 	 * @param time the time at which to set the state
-	 * @internal
 	 */
-	_updateState (time: number) {
+	private _updateAndApplyState (time: number) {
+		this.hasNeverUpdated = false;
+
 		this.state.update(time);
 		this.skeleton.update(time);
-
-		this._stateChanged = true;
-
-		this._boundsDirty = true;
-
-		this.onViewUpdate();
-	}
-
-	/**
-	 * Applies the state to this spine instance.
-	 * - updates the state to the skeleton
-	 * - updates its world transform (spine world transform)
-	 * - validates the attachments - to flag if the attachments have changed this state
-	 * - transforms the attachments - to update the vertices of the attachments based on the new positions
-	 * - update the slot attachments - to update the position, rotation, scale, and visibility of the attached containers
-	 * @internal
-	 */
-	_applyState () {
-		if (!this._stateChanged) return;
-		this._stateChanged = false;
 
 		const { skeleton } = this;
 
@@ -381,14 +353,31 @@ export class Spine extends ViewContainer {
 		skeleton.updateWorldTransform(Physics.update);
 		this.afterUpdateWorldTransforms(this);
 
+		this.updateSlotObjects();
+
+		this._stateChanged = true;
+
+		this._boundsDirty = true;
+
+		this.onViewUpdate();
+	}
+
+	/**
+	 * - validates the attachments - to flag if the attachments have changed this state
+	 * - transforms the attachments - to update the vertices of the attachments based on the new positions
+	 * @internal
+	 */
+	_validateAndTransformAttachments () {
+		if (!this._stateChanged) return;
+		this._stateChanged = false;
+
 		this.validateAttachments();
 
 		this.transformAttachments();
-
-		this.updateSlotObjects();
 	}
 
 	private validateAttachments () {
+
 		const currentDrawOrder = this.skeleton.drawOrder;
 
 		const lastAttachments = this._lastAttachments;
@@ -416,7 +405,7 @@ export class Spine extends ViewContainer {
 			lastAttachments.length = index;
 		}
 
-		this.spineAttachmentsDirty = spineAttachmentsDirty;
+		this.spineAttachmentsDirty ||= spineAttachmentsDirty;
 	}
 
 	private updateAndSetPixiMask (slot: Slot, last: boolean) {
@@ -505,6 +494,12 @@ export class Spine extends ViewContainer {
 						);
 					}
 
+					// sequences uvs are known only after computeWorldVertices is invoked
+					if (cacheData.uvs.length < attachment.uvs.length) {
+						cacheData.uvs = new Float32Array(attachment.uvs.length);
+					}
+
+					// need to copy because attachments uvs are shared among skeletons using the same atlas
 					fastCopy((attachment.uvs as Float32Array).buffer, cacheData.uvs.buffer);
 
 					const skeleton = slot.bone.skeleton;
@@ -630,10 +625,11 @@ export class Spine extends ViewContainer {
 		}
 	}
 
-	private updateSlotObject (slotAttachment: { slot: Slot, container: Container }) {
+	private updateSlotObject (slotAttachment: { slot: Slot, container: Container, followAttachmentTimeline: boolean }) {
 		const { slot, container } = slotAttachment;
 
-		container.visible = this.skeleton.drawOrder.includes(slot);
+		const followAttachmentValue = slotAttachment.followAttachmentTimeline ? Boolean(slot.attachment) : true;
+		container.visible = this.skeleton.drawOrder.includes(slot) && followAttachmentValue;
 
 		if (container.visible) {
 			const bone = slot.bone;
@@ -695,8 +691,7 @@ export class Spine extends ViewContainer {
 
 	protected onViewUpdate () {
 		// increment from the 12th bit!
-		this._didChangeId += 1 << 12;
-
+		this._didViewChangeTick++;
 		this._boundsDirty = true;
 
 		if (this.didViewUpdate) return;
@@ -717,8 +712,10 @@ export class Spine extends ViewContainer {
 	 *
 	 * @param container - The container to attach to the slot
 	 * @param slotRef - The slot id or  slot to attach to
+	 * @param options - Optional settings for the attachment.
+	 * @param options.followAttachmentTimeline - If true, the attachment will follow the slot's attachment timeline.
 	 */
-	public addSlotObject (slot: number | string | Slot, container: Container) {
+	public addSlotObject (slot: number | string | Slot, container: Container, options?: { followAttachmentTimeline?: boolean }) {
 		slot = this.getSlotFromRef(slot);
 
 		// need to check in on the container too...
@@ -735,7 +732,11 @@ export class Spine extends ViewContainer {
 		// TODO only add once??
 		this.addChild(container);
 
-		const slotObject = { container, slot };
+		const slotObject = {
+			container,
+			slot,
+			followAttachmentTimeline: options?.followAttachmentTimeline || false,
+		};
 		this._slotsObject[slot.data.name] = slotObject;
 
 		this.updateSlotObject(slotObject);
@@ -775,6 +776,16 @@ export class Spine extends ViewContainer {
 	}
 
 	/**
+	 * Removes all PixiJS containers attached to any slot.
+	 */
+	public removeSlotObjects () {
+		Object.entries(this._slotsObject).forEach(([slotName, slotObject]) => {
+			if (slotObject) slotObject.container.removeFromParent();
+			delete this._slotsObject[slotName];
+		});
+	}
+
+	/**
 	 * Returns a container attached to a slot, or undefined if no container is attached.
 	 *
 	 * @param slotRef - The slot id or slot to get the attachment from
@@ -786,7 +797,7 @@ export class Spine extends ViewContainer {
 		return this._slotsObject[slot.data.name]?.container;
 	}
 
-	private updateBounds () {
+	protected updateBounds () {
 		this._boundsDirty = false;
 
 		this.skeletonBounds ||= new SkeletonBounds();
@@ -796,7 +807,11 @@ export class Spine extends ViewContainer {
 		skeletonBounds.update(this.skeleton, true);
 
 		if (skeletonBounds.minX === Infinity) {
-			this._applyState();
+			if (this.hasNeverUpdated) {
+				this._updateAndApplyState(0);
+				this._boundsDirty = false;
+			}
+			this._validateAndTransformAttachments();
 
 			const drawOrder = this.skeleton.drawOrder;
 			const bounds = this._bounds;

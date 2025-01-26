@@ -29,6 +29,7 @@
 
 import {
 	checkExtension,
+	copySearchParams,
 	DOMAdapter,
 	extensions,
 	ExtensionType,
@@ -37,7 +38,7 @@ import {
 	Resolver,
 	TextureSource
 } from 'pixi.js';
-import { SpineTexture } from '../SpineTexture';
+import { SpineTexture } from '../SpineTexture.js';
 import { TextureAtlas } from '@esotericsoftware/spine-core';
 
 import type { AssetExtension, Loader, ResolvedAsset, Texture, UnresolvedAsset } from 'pixi.js';
@@ -125,7 +126,7 @@ const spineTextureAtlasLoader: AssetExtension<RawAtlas | TextureAtlas, ISpineAtl
 					const url: string = providedPage ?? path.normalize([...basePath.split(path.sep), pageName].join(path.sep));
 
 					const assetsToLoadIn = {
-						src: url,
+						src: copySearchParams(url, options.src as string),
 						data: {
 							...metadata.imageMetadata,
 							alphaMode: page.pma ? 'premultiplied-alpha' : 'premultiply-alpha-on-upload'

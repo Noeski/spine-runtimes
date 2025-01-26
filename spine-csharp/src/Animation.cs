@@ -2788,6 +2788,11 @@ namespace Spine {
 			Sequence sequence = ((IHasTextureRegion)slotAttachment).Sequence;
 			if (sequence == null) return;
 
+			if (direction == MixDirection.Out) {
+				if (blend == MixBlend.Setup) slot.SequenceIndex = -1;
+				return;
+			}
+
 			float[] frames = this.frames;
 			if (time < frames[0]) {
 				if (blend == MixBlend.Setup || blend == MixBlend.First) slot.SequenceIndex = -1;

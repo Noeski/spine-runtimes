@@ -27,7 +27,7 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import { AttachmentCacheData, Spine } from './Spine';
+import { AttachmentCacheData, Spine } from './Spine.js';
 
 import type { Batch, Batcher, BLEND_MODES, DefaultBatchableMeshElement, Matrix, Texture, Topology } from 'pixi.js';
 

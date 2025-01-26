@@ -32,12 +32,12 @@
           scale: 0.25,
         });
 
+        // Set animation "playing-in-the-rain" on track 0, looped.
+        cloudPot.state.setAnimation(0, "playing-in-the-rain", true);
+
         // Center the spine object on screen.
         cloudPot.x = window.innerWidth / 2;
         cloudPot.y = window.innerHeight / 2 + cloudPot.getBounds().height / 4;
-
-        // Set animation "playing-in-the-rain" on track 0, looped.
-        cloudPot.state.setAnimation(0, "playing-in-the-rain", true);
 
         // Add the display object to the stage.
         app.stage.addChild(cloudPot);

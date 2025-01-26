@@ -30,7 +30,7 @@
 import { VertexAttachment, Attachment } from "./attachments/Attachment.js";
 import { IkConstraint } from "./IkConstraint.js";
 import { PathConstraint } from "./PathConstraint.js";
-import { Physics, Skeleton } from "./Skeleton.js";
+import { Skeleton } from "./Skeleton.js";
 import { Slot } from "./Slot.js";
 import { TransformConstraint } from "./TransformConstraint.js";
 import { StringSet, Utils, MathUtils, NumberArrayLike } from "./Utils.js";
@@ -2328,6 +2328,11 @@ export class SequenceTimeline extends Timeline implements SlotTimeline {
 		if (slotAttachment != attachment) {
 			if (!(slotAttachment instanceof VertexAttachment)
 				|| (slotAttachment as VertexAttachment).timelineAttachment != attachment) return;
+		}
+
+		if (direction == MixDirection.mixOut) {
+			if (blend == MixBlend.setup) slot.sequenceIndex = -1;
+			return;
 		}
 
 		let frames = this.frames;

@@ -133,6 +133,7 @@ export class Spine extends Container {
 	public state: AnimationState;
 
 	private darkTint = false;
+	private hasNeverUpdated = true;
 
 	private _debug?: ISpineDebugRenderer | undefined = undefined;
 	public get debug (): ISpineDebugRenderer | undefined {
@@ -214,8 +215,6 @@ export class Spine extends Container {
 		}
 
 		this.autoUpdate = options?.autoUpdate ?? true;
-		this.skeleton.setToSetupPose();
-		this.skeleton.updateWorldTransform(Physics.update);
 	}
 
 	/*
@@ -248,6 +247,8 @@ export class Spine extends Container {
 	}
 
 	protected internalUpdate (_deltaFrame: number, deltaSeconds?: number): void {
+		this.hasNeverUpdated = false;
+
 		// Because reasons, pixi uses deltaFrames at 60fps. We ignore the default deltaFrames and use the deltaSeconds from pixi ticker.
 		const delta = deltaSeconds ?? Ticker.shared.deltaMS / 1000;
 		this.state.update(delta);
@@ -293,6 +294,13 @@ export class Spine extends Container {
 		}
 	}
 
+	protected _calculateBounds (): void {
+		if (this.hasNeverUpdated) {
+			this.internalUpdate(0, 0);
+			this.renderMeshes();
+		}
+	}
+
 	/**
 	 * Check the existence of a mesh for the given slot.
 	 * If you want to manually handle which meshes go on which slot and how you cache, overwrite this method.
@@ -318,7 +326,7 @@ export class Spine extends Container {
 		}
 	}
 
-	private slotsObject = new Map<Slot, Container>();
+	public slotsObject = new Map<Slot, { container: Container, followAttachmentTimeline: boolean }>();
 	private getSlotFromRef (slotRef: number | string | Slot): Slot {
 		let slot: Slot | null;
 		if (typeof slotRef === 'number') slot = this.skeleton.slots[slotRef];
@@ -340,14 +348,16 @@ export class Spine extends Container {
 	 * slot before adding it to the current one.
 	 * @param slotRef - The slot index, or the slot name, or the Slot where the pixi object will be added to.
 	 * @param pixiObject - The pixi Container to add.
+	 * @param options - Optional settings for the attachment.
+	 * @param options.followAttachmentTimeline - If true, the attachment will follow the slot's attachment timeline.
 	 */
-	addSlotObject (slotRef: number | string | Slot, pixiObject: Container): void {
+	addSlotObject (slotRef: number | string | Slot, pixiObject: Container, options?: { followAttachmentTimeline?: boolean }): void {
 		let slot = this.getSlotFromRef(slotRef);
-		let oldPixiObject = this.slotsObject.get(slot);
-		if (oldPixiObject === pixiObject) return;
+		const oldPixiObject = this.slotsObject.get(slot)?.container;
+		if (oldPixiObject && oldPixiObject === pixiObject) return;
 
 		// search if the pixiObject was already in another slotObject
-		for (const [otherSlot, oldPixiObjectAnotherSlot] of this.slotsObject) {
+		for (const [otherSlot, { container: oldPixiObjectAnotherSlot }] of this.slotsObject) {
 			if (otherSlot !== slot && oldPixiObjectAnotherSlot === pixiObject) {
 				this.removeSlotObject(otherSlot, pixiObject);
 				break;
@@ -356,7 +366,10 @@ export class Spine extends Container {
 
 		if (oldPixiObject) this.removeChild(oldPixiObject);
 
-		this.slotsObject.set(slot, pixiObject);
+		this.slotsObject.set(slot, {
+			container: pixiObject,
+			followAttachmentTimeline: options?.followAttachmentTimeline || false,
+		});
 		this.addChild(pixiObject);
 	}
 	/**
@@ -366,8 +379,10 @@ export class Spine extends Container {
 	 * @returns a Container if any, undefined otherwise.
 	 */
 	getSlotObject (slotRef: number | string | Slot): Container | undefined {
-		return this.slotsObject.get(this.getSlotFromRef(slotRef));
+		const element = this.slotsObject.get(this.getSlotFromRef(slotRef));
+		return element ? element.container : undefined;
 	}
+
 	/**
 	 * Remove a slot object from the given slot.
 	 * If `pixiObject` is passed and attached to the given slot, remove it from the slot.
@@ -377,7 +392,7 @@ export class Spine extends Container {
 	 */
 	removeSlotObject (slotRef: number | string | Slot, pixiObject?: Container): void {
 		let slot = this.getSlotFromRef(slotRef);
-		let slotObject = this.slotsObject.get(slot);
+		let slotObject = this.slotsObject.get(slot)?.container;
 		if (!slotObject) return;
 
 		// if pixiObject is passed, remove only if it is equal to the given one
@@ -385,6 +400,16 @@ export class Spine extends Container {
 
 		this.removeChild(slotObject);
 		this.slotsObject.delete(slot);
+	}
+
+	/**
+	 * Removes all PixiJS containers attached to any slot.
+	 */
+	public removeSlotObjects () {
+		for (const [, slotObject] of this.slotsObject) {
+			slotObject.container.removeFromParent();
+		}
+		this.slotsObject.clear();
 	}
 
 	private verticesCache: NumberArrayLike = Utils.newFloatArray(1024);
@@ -396,13 +421,22 @@ export class Spine extends Container {
 			mask.destroy();
 		}
 	}
-	private updatePixiObject (pixiObject: Container, slot: Slot, zIndex: number) {
-		pixiObject.position.set(slot.bone.worldX, slot.bone.worldY);
-		pixiObject.scale.set(slot.bone.getWorldScaleX(), slot.bone.getWorldScaleX());
-		pixiObject.rotation = slot.bone.getWorldRotationX() * MathUtils.degRad;
-		pixiObject.zIndex = zIndex + 1;
-		pixiObject.alpha = this.skeleton.color.a * slot.color.a;
+
+	private updateSlotObject (element: { container: Container, followAttachmentTimeline: boolean }, slot: Slot, zIndex: number) {
+		const { container: slotObject, followAttachmentTimeline } = element
+
+		const followAttachmentValue = followAttachmentTimeline ? Boolean(slot.attachment) : true;
+		slotObject.visible = this.skeleton.drawOrder.includes(slot) && followAttachmentValue;
+
+		if (slotObject.visible) {
+			slotObject.position.set(slot.bone.worldX, slot.bone.worldY);
+			slotObject.scale.set(slot.bone.getWorldScaleX(), slot.bone.getWorldScaleY());
+			slotObject.rotation = slot.bone.getWorldRotationX() * MathUtils.degRad;
+			slotObject.zIndex = zIndex + 1;
+			slotObject.alpha = this.skeleton.color.a * slot.color.a;
+		}
 	}
+
 	private updateAndSetPixiMask (pixiMaskSource: PixiMaskSource | null, pixiObject: Container) {
 		if (Spine.clipper.isClipping() && pixiMaskSource) {
 			let mask = this.clippingSlotToPixiMasks[pixiMaskSource.slot.data.name] as Graphics;
@@ -456,9 +490,9 @@ export class Spine extends Container {
 			let pixiObject = this.slotsObject.get(slot);
 			let zIndex = i + slotObjectsCounter;
 			if (pixiObject) {
-				this.updatePixiObject(pixiObject, slot, zIndex + 1);
+				this.updateSlotObject(pixiObject, slot, zIndex + 1);
 				slotObjectsCounter++;
-				this.updateAndSetPixiMask(pixiMaskSource, pixiObject);
+				this.updateAndSetPixiMask(pixiMaskSource, pixiObject.container);
 			}
 
 			const useDarkColor = slot.darkColor != null;

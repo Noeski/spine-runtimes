@@ -1,3 +1,7 @@
+# 4.2.33
+- Merge fixes in spine-cpp(-lite)
+- Prepare for upcoming Dart/Flutter releases, see https://github.com/EsotericSoftware/spine-runtimes/pull/2690
+
 # 4.2.32
 - Fix spine-flutter spec checksum in `Podfile.lock`, keeping version control cleaner. See https://github.com/EsotericSoftware/spine-runtimes/pull/2609
 

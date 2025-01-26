@@ -24,10 +24,12 @@ public final class TransformConstraintData: NSObject {
     }
 
     public var bones: [BoneData] {
-        let num = Int(spine_transform_constraint_data_get_num_bones(wrappee))
         let ptr = spine_transform_constraint_data_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_transform_constraint_data_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -452,10 +454,12 @@ public final class TransformConstraint: NSObject {
     }
 
     public var bones: [Bone] {
-        let num = Int(spine_transform_constraint_get_num_bones(wrappee))
         let ptr = spine_transform_constraint_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_transform_constraint_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -549,10 +553,12 @@ public final class PathConstraintData: NSObject {
     }
 
     public var bones: [BoneData] {
-        let num = Int(spine_path_constraint_data_get_num_bones(wrappee))
         let ptr = spine_path_constraint_data_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_path_constraint_data_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -766,10 +772,12 @@ public final class IkConstraintData: NSObject {
     }
 
     public var bones: [BoneData] {
-        let num = Int(spine_ik_constraint_data_get_num_bones(wrappee))
         let ptr = spine_ik_constraint_data_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_ik_constraint_data_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -1129,19 +1137,19 @@ public final class RegionAttachment: NSObject {
     }
 
     public var offset: [Float?] {
-        let num = Int(spine_region_attachment_get_num_offset(wrappee))
         let ptr = spine_region_attachment_get_offset(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_region_attachment_get_num_offset(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var uvs: [Float?] {
-        let num = Int(spine_region_attachment_get_num_uvs(wrappee))
         let ptr = spine_region_attachment_get_uvs(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_region_attachment_get_num_uvs(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var x: Float {
@@ -1233,19 +1241,19 @@ public final class VertexAttachment: NSObject {
     }
 
     public var bones: [Int32?] {
-        let num = Int(spine_vertex_attachment_get_num_bones(wrappee))
         let ptr = spine_vertex_attachment_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_vertex_attachment_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var vertices: [Float?] {
-        let num = Int(spine_vertex_attachment_get_num_vertices(wrappee))
         let ptr = spine_vertex_attachment_get_vertices(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_vertex_attachment_get_num_vertices(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var timelineAttachment: Attachment? {
@@ -1365,27 +1373,27 @@ public final class MeshAttachment: NSObject {
     }
 
     public var regionUvs: [Float?] {
-        let num = Int(spine_mesh_attachment_get_num_region_uvs(wrappee))
         let ptr = spine_mesh_attachment_get_region_uvs(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_mesh_attachment_get_num_region_uvs(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var uvs: [Float?] {
-        let num = Int(spine_mesh_attachment_get_num_uvs(wrappee))
         let ptr = spine_mesh_attachment_get_uvs(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_mesh_attachment_get_num_uvs(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var triangles: [UInt16] {
-        let num = Int(spine_mesh_attachment_get_num_triangles(wrappee))
         let ptr = spine_mesh_attachment_get_triangles(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_mesh_attachment_get_num_triangles(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var color: Color {
@@ -1405,11 +1413,11 @@ public final class MeshAttachment: NSObject {
     }
 
     public var edges: [UInt16] {
-        let num = Int(spine_mesh_attachment_get_num_edges(wrappee))
         let ptr = spine_mesh_attachment_get_edges(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_mesh_attachment_get_num_edges(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var hullLength: Int32 {
@@ -1470,11 +1478,11 @@ public final class PathAttachment: NSObject {
     }
 
     public var lengths: [Float?] {
-        let num = Int(spine_path_attachment_get_num_lengths(wrappee))
         let ptr = spine_path_attachment_get_lengths(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_path_attachment_get_num_lengths(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var color: Color {
@@ -1564,10 +1572,12 @@ public final class PathConstraint: NSObject {
     }
 
     public var bones: [Bone] {
-        let num = Int(spine_path_constraint_get_num_bones(wrappee))
         let ptr = spine_path_constraint_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_path_constraint_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -1734,18 +1744,22 @@ public final class SkeletonBounds: NSObject {
     }
 
     public var polygons: [Polygon] {
-        let num = Int(spine_skeleton_bounds_get_num_polygons(wrappee))
         let ptr = spine_skeleton_bounds_get_polygons(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_bounds_get_num_polygons(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var boundingBoxes: [BoundingBoxAttachment] {
-        let num = Int(spine_skeleton_bounds_get_num_bounding_boxes(wrappee))
         let ptr = spine_skeleton_bounds_get_bounding_boxes(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_bounds_get_num_bounding_boxes(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -1755,11 +1769,6 @@ public final class SkeletonBounds: NSObject {
 
     public var height: Float {
         return spine_skeleton_bounds_get_height(wrappee)
-    }
-
-    @discardableResult
-    public func create() -> SkeletonBounds {
-        return .init(spine_skeleton_bounds_create())
     }
 
     public func dispose() {
@@ -1952,11 +1961,11 @@ public final class RenderCommand: NSObject {
     }
 
     public var indices: [UInt16] {
-        let num = Int(spine_render_command_get_num_indices(wrappee))
         let ptr = spine_render_command_get_indices(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_render_command_get_num_indices(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
     public var atlasPage: Int32 {
@@ -1990,74 +1999,92 @@ public final class SkeletonData: NSObject {
     }
 
     public var bones: [BoneData] {
-        let num = Int(spine_skeleton_data_get_num_bones(wrappee))
         let ptr = spine_skeleton_data_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var slots: [SlotData] {
-        let num = Int(spine_skeleton_data_get_num_slots(wrappee))
         let ptr = spine_skeleton_data_get_slots(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_slots(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var skins: [Skin] {
-        let num = Int(spine_skeleton_data_get_num_skins(wrappee))
         let ptr = spine_skeleton_data_get_skins(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_skins(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var events: [EventData] {
-        let num = Int(spine_skeleton_data_get_num_events(wrappee))
         let ptr = spine_skeleton_data_get_events(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_events(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var animations: [Animation] {
-        let num = Int(spine_skeleton_data_get_num_animations(wrappee))
         let ptr = spine_skeleton_data_get_animations(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_animations(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var ikConstraints: [IkConstraintData] {
-        let num = Int(spine_skeleton_data_get_num_ik_constraints(wrappee))
         let ptr = spine_skeleton_data_get_ik_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_ik_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var transformConstraints: [TransformConstraintData] {
-        let num = Int(spine_skeleton_data_get_num_transform_constraints(wrappee))
         let ptr = spine_skeleton_data_get_transform_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_transform_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var pathConstraints: [PathConstraintData] {
-        let num = Int(spine_skeleton_data_get_num_path_constraints(wrappee))
         let ptr = spine_skeleton_data_get_path_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_path_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var physicsConstraints: [PhysicsConstraintData] {
-        let num = Int(spine_skeleton_data_get_num_physics_constraints(wrappee))
         let ptr = spine_skeleton_data_get_physics_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_data_get_num_physics_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -2199,10 +2226,12 @@ public final class IkConstraint: NSObject {
     }
 
     public var bones: [Bone] {
-        let num = Int(spine_ik_constraint_get_num_bones(wrappee))
         let ptr = spine_ik_constraint_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_ik_constraint_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -2551,6 +2580,11 @@ public final class Attachment: NSObject {
 
     public var type: AttachmentType {
         return spine_attachment_get_type(wrappee)
+    }
+
+    @discardableResult
+    public func castToBoundingBoxAttachment() -> BoundingBoxAttachment? {
+        return spine_attachment_cast_to_bounding_box_attachment(wrappee).flatMap { .init($0) }
     }
 
     public func dispose() {
@@ -2919,58 +2953,72 @@ public final class Skeleton: NSObject {
     }
 
     public var bones: [Bone] {
-        let num = Int(spine_skeleton_get_num_bones(wrappee))
         let ptr = spine_skeleton_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var slots: [Slot] {
-        let num = Int(spine_skeleton_get_num_slots(wrappee))
         let ptr = spine_skeleton_get_slots(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_get_num_slots(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var drawOrder: [Slot] {
-        let num = Int(spine_skeleton_get_num_draw_order(wrappee))
         let ptr = spine_skeleton_get_draw_order(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_get_num_draw_order(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var ikConstraints: [IkConstraint] {
-        let num = Int(spine_skeleton_get_num_ik_constraints(wrappee))
         let ptr = spine_skeleton_get_ik_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_get_num_ik_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var transformConstraints: [TransformConstraint] {
-        let num = Int(spine_skeleton_get_num_transform_constraints(wrappee))
         let ptr = spine_skeleton_get_transform_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_get_num_transform_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var pathConstraints: [PathConstraint] {
-        let num = Int(spine_skeleton_get_num_path_constraints(wrappee))
         let ptr = spine_skeleton_get_path_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_get_num_path_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var physicsConstraints: [PhysicsConstraint] {
-        let num = Int(spine_skeleton_get_num_physics_constraints(wrappee))
         let ptr = spine_skeleton_get_physics_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skeleton_get_num_physics_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -3134,10 +3182,12 @@ public final class Sequence: NSObject {
     }
 
     public var regions: [TextureRegion] {
-        let num = Int(spine_sequence_get_num_regions(wrappee))
         let ptr = spine_sequence_get_regions(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_sequence_get_num_regions(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -3200,11 +3250,11 @@ public final class Polygon: NSObject {
     }
 
     public var vertices: [Float?] {
-        let num = Int(spine_polygon_get_num_vertices(wrappee))
         let ptr = spine_polygon_get_vertices(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0]
-        }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_polygon_get_num_vertices(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return Array(buffer)
     }
 
 }
@@ -3428,10 +3478,12 @@ public final class Bone: NSObject {
     }
 
     public var children: [Bone] {
-        let num = Int(spine_bone_get_num_children(wrappee))
         let ptr = spine_bone_get_children(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_bone_get_num_children(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
@@ -3798,18 +3850,22 @@ public final class Skin: NSObject {
     }
 
     public var bones: [BoneData] {
-        let num = Int(spine_skin_get_num_bones(wrappee))
         let ptr = spine_skin_get_bones(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skin_get_num_bones(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 
     public var constraints: [ConstraintData] {
-        let num = Int(spine_skin_get_num_constraints(wrappee))
         let ptr = spine_skin_get_constraints(wrappee)
-        return (0..<num).compactMap {
-            ptr?[$0].flatMap { .init($0) }
+        guard let validPtr = ptr else { return [] }
+        let num = Int(spine_skin_get_num_constraints(wrappee))
+        let buffer = UnsafeBufferPointer(start: validPtr, count: num)
+        return buffer.compactMap {
+            $0.flatMap { .init($0) }
         }
     }
 

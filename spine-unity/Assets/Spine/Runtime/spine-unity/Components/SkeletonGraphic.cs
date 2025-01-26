@@ -1416,11 +1416,11 @@ namespace Spine.Unity {
 		public Vector2 GetScaledPivotOffset () {
 			return pivotOffset * GetLayoutScale(layoutScaleMode);
 		}
-
+#endif
 		public void SetScaledPivotOffset (Vector2 pivotOffsetScaled) {
 			pivotOffset = pivotOffsetScaled / GetLayoutScale(layoutScaleMode);
 		}
-#endif
+
 		protected float GetLayoutScale (LayoutMode mode) {
 			Vector2 currentSize = GetCurrentRectSize();
 			mode = GetEffectiveLayoutMode(mode);

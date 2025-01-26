@@ -43,7 +43,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/../spine-cpp ${CMAKE_BINARY_DIR}/spine-cpp-
 # spine-glfw library
 add_library(spine-glfw STATIC src/spine-glfw.cpp src/spine-glfw.h src/stb_image.h)
 target_link_libraries(spine-glfw PRIVATE glbinding::glbinding)
-target_link_libraries(spine-glfw LINK_PUBLIC spine-cpp)
+target_link_libraries(spine-glfw LINK_PUBLIC spine-cpp-lite)
 
 # Example
 add_executable(spine-glfw-example example/main.cpp)
@@ -52,6 +52,15 @@ target_link_libraries(spine-glfw-example PRIVATE OpenGL::GL)
 target_link_libraries(spine-glfw-example LINK_PUBLIC spine-glfw)
 target_link_libraries(spine-glfw-example PRIVATE glbinding::glbinding)
 set_property(TARGET spine-glfw-example PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/spine-glfw")
+
+# spine-cpp-lite Example
+add_executable(spine-glfw-example-cpp-lite example/main-cpp-lite.cpp)
+target_link_libraries(spine-glfw-example-cpp-lite PRIVATE glfw)
+target_link_libraries(spine-glfw-example-cpp-lite PRIVATE OpenGL::GL)
+target_link_libraries(spine-glfw-example-cpp-lite LINK_PUBLIC spine-glfw)
+target_link_libraries(spine-glfw-example-cpp-lite PRIVATE glbinding::glbinding)
+set_property(TARGET spine-glfw-example-cpp-lite PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/spine-glfw")
+
 
 # copy data to build directory
 add_custom_command(TARGET spine-glfw-example PRE_BUILD

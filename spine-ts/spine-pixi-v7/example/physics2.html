@@ -32,12 +32,12 @@
           scale: 0.2,
         });
 
+        // Set animation "eyeblink-long" on track 0, looped.
+        girl.state.setAnimation(0, "eyeblink-long", true);
+
         // Center the spine object on screen.
         girl.x = window.innerWidth / 2;
         girl.y = window.innerHeight / 2 + girl.getBounds().height / 4;
-
-        // Set animation "eyeblink-long" on track 0, looped.
-        girl.state.setAnimation(0, "eyeblink-long", true);
 
         // Add the display object to the stage.
         app.stage.addChild(girl);
