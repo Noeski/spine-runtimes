@@ -487,7 +487,7 @@ namespace Spine.Unity.Editor {
 			foreach (SkeletonGraphic skeletonGraphic in skeletonGraphicObjects) {
 
 				if (skeletonGraphic.skeletonDataAsset == null) {
-					int skeletonGraphicID = skeletonGraphic.GetInstanceID();
+					EntityId skeletonGraphicID = skeletonGraphic.GetEntityId();
 					if (SpineEditorUtilities.DataReloadHandler.savedSkeletonDataAssetAtSKeletonGraphicID.ContainsKey(skeletonGraphicID)) {
 						string assetPath = SpineEditorUtilities.DataReloadHandler.savedSkeletonDataAssetAtSKeletonGraphicID[skeletonGraphicID];
 						skeletonGraphic.skeletonDataAsset = (SkeletonDataAsset)AssetDatabase.LoadAssetAtPath<SkeletonDataAsset>(assetPath);
@@ -590,9 +590,9 @@ namespace Spine.Unity.Editor {
 							for (int i = 0; i < skeletonDataAtlasAssets.Length; i++) {
 								if (!ReferenceEquals(null, skeletonDataAtlasAssets[i]) &&
 									skeletonDataAtlasAssets[i].Equals(null) &&
-									skeletonDataAtlasAssets[i].GetInstanceID() != 0
+									skeletonDataAtlasAssets[i].GetEntityId() != EntityId.None
 								) {
-									skeletonDataAtlasAssets[i] = EditorUtility.InstanceIDToObject(skeletonDataAtlasAssets[i].GetInstanceID()) as AtlasAssetBase;
+									skeletonDataAtlasAssets[i] = EditorUtility.EntityIdToObject(skeletonDataAtlasAssets[i].GetEntityId()) as AtlasAssetBase;
 								}
 							}
 						}
