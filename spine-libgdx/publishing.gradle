@@ -1,5 +1,25 @@
-ext {
-    libraryVersion = "4.2.8-SNAPSHOT"
+
+// JReleaser config for release builds to Central Portal
+if (project.hasProperty('RELEASE')) {
+    apply plugin: 'org.jreleaser'
+
+    jreleaser {
+        deploy {
+            maven {
+                mavenCentral {
+                    sonatype {
+                        active = 'ALWAYS'
+                        username = getRepositoryUsername()
+                        password = getRepositoryPassword()
+                        url = 'https://central.sonatype.com/api/v1/publisher'
+                        stagingRepository("${buildDir}/staging-deploy")
+                        sign = false
+                        verifyPom = false
+                    }
+                }
+            }
+        }
+    }
 }
 
 project("spine-libgdx") {
@@ -18,6 +38,7 @@ project("spine-libgdx") {
 
     tasks.javadoc {
         failOnError = false
+        options.addStringOption('Xdoclint:none', '-quiet')
     }
 
     tasks.register("javadocJar", Jar) {
@@ -36,17 +57,19 @@ project("spine-libgdx") {
 
                     groupId = "com.esotericsoftware.spine"
                     artifactId = "spine-libgdx"
-                    version = libraryVersion
+                    version = project.version
 
                     pom {
                         packaging = "jar"
-                        name.set("spine-libgdx")
-                        description.set("Spine Runtime for libGDX")
-                        url.set("https://github.com/esotericsoftware/spine-runtimes")
+                        name = POM_NAME
+                        if(!POM_DESCRIPTION.isEmpty())
+                            description = POM_DESCRIPTION
+                        url = POM_URL
                         licenses {
                             license {
-                                name.set("Spine Runtimes License")
-                                url.set("https://esotericsoftware.com/spine-runtimes-license")
+                                name = POM_LICENCE_NAME
+                                url = POM_LICENCE_URL
+                                distribution = POM_LICENCE_DIST
                             }
                         }
                         developers {
@@ -56,9 +79,9 @@ project("spine-libgdx") {
                             }
                         }
                         scm {
-                            url.set(pom.url.get())
-                            connection.set("scm:git:${url.get()}.git")
-                            developerConnection.set("scm:git:${url.get()}.git")
+                            connection = POM_SCM_CONNECTION
+                            developerConnection = POM_SCM_DEV_CONNECTION
+                            url = POM_SCM_URL
                         }
                     }
                 }
@@ -67,23 +90,60 @@ project("spine-libgdx") {
             repositories {
                 maven {
                     name = "SonaType"
-                    url = uri(libraryVersion.endsWith("-SNAPSHOT") ?
-                            "https://oss.sonatype.org/content/repositories/snapshots" :
-                            "https://oss.sonatype.org/service/local/staging/deploy/maven2")
+                    url = project.version.endsWith("-SNAPSHOT")
+                            ? getSnapshotRepositoryUrl()
+                            // If release build, dump artifacts to root project build/staging-deploy folder for consumption by jreleaser
+                            : rootProject.layout.buildDirectory.dir('staging-deploy')
 
-                    credentials {
-                        username = project.findProperty("ossrhUsername")
-                        password = project.findProperty("ossrhPassword")
+                    if (project.version.endsWith("-SNAPSHOT") && (getRepositoryUsername() || getRepositoryPassword())) {
+                        credentials {
+                            username = getRepositoryUsername()
+                            password = getRepositoryPassword()
+                        }
                     }
                 }
             }
         }
 
-        if (!libraryVersion.endsWith("-SNAPSHOT")) {
-            signing {
-                useGpgCmd()
-                sign(publishing.publications["release"])
+        signing {
+            useGpgCmd()
+            sign(publishing.publications["release"])
+        }
+
+        // Simply using "required" in signing block doesn't work because taskGraph isn't ready yet.
+        gradle.taskGraph.whenReady {
+            tasks.withType(Sign) {
+                onlyIf { !project.version.endsWith("-SNAPSHOT") }
             }
         }
+    }
+}
+
+// JReleaser config for release builds to Central Portal
+if (project.hasProperty('RELEASE')) {
+    apply plugin: 'org.jreleaser'
+
+    jreleaser {
+        deploy {
+            maven {
+                mavenCentral {
+                    sonatype {
+                        active = 'ALWAYS'
+                        username = getRepositoryUsername()
+                        password = getRepositoryPassword()
+                        url = 'https://central.sonatype.com/api/v1/publisher'
+                        stagingRepository("${rootProject.buildDir}/staging-deploy")
+                        sign = false
+                        verifyPom = false
+                    }
+                }
+            }
+        }
+    }
+
+    // For release builds, create a task that depends on publishing and finalizes with jreleaser
+    tasks.register('publishRelease') {
+        dependsOn tasks.withType(PublishToMavenRepository)
+        finalizedBy tasks.named('jreleaserDeploy')
     }
 }

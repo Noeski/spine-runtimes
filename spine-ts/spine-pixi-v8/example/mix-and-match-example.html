@@ -2,7 +2,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>spine-pixi-v8</title>
-    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.4.1/dist/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.16/dist/pixi.js"></script>
     <script src="../dist/iife/spine-pixi-v8.js"></script>
     <link rel="stylesheet" href="../../index.css">
   </head>
@@ -20,11 +20,11 @@
           backgroundColor: 0x2c3e50,
           hello: true,
         })
-        document.body.appendChild(app.view);
+        document.body.appendChild(app.canvas);
 
         // Pre-load the skeleton data and atlas. You can also load .json skeleton data.
-        PIXI.Assets.add({alias: "mixAndMatchData", src: "./assets/mix-and-match-pro.skel" });
-        PIXI.Assets.add({alias: "mixAndMatchAtlas", src: "./assets/mix-and-match-pma.atlas" });
+        PIXI.Assets.add({alias: "mixAndMatchData", src: "/assets/mix-and-match-pro.skel" });
+        PIXI.Assets.add({alias: "mixAndMatchAtlas", src: "/assets/mix-and-match-pma.atlas" });
         await PIXI.Assets.load(["mixAndMatchData", "mixAndMatchAtlas"]);
 
         // Create the Spine display object

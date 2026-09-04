@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #if UNITY_2019_3_OR_NEWER
@@ -318,6 +318,10 @@ namespace Spine.Unity.AttachmentTools {
 
 			if (sourceAttachments == null) throw new System.ArgumentNullException("sourceAttachments");
 			if (outputAttachments == null) throw new System.ArgumentNullException("outputAttachments");
+			if (additionalOutputTextures != null && additionalTexturePropertyIDsToCopy != null &&
+				additionalOutputTextures.Length < additionalTexturePropertyIDsToCopy.Length)
+				throw new System.ArgumentException("If non-null, additionalOutputTextures.Length must match " +
+					"additionalTexturePropertyIDsToCopy.Length.", "additionalOutputTextures");
 			outputTexture = null;
 			if (additionalTexturePropertyIDsToCopy != null && additionalTextureIsLinear == null) {
 				additionalTextureIsLinear = new bool[additionalTexturePropertyIDsToCopy.Length];
@@ -332,7 +336,6 @@ namespace Spine.Unity.AttachmentTools {
 
 			// Collect all textures from original attachments.
 			int numTextureParamsToRepack = 1 + (additionalTexturePropertyIDsToCopy == null ? 0 : additionalTexturePropertyIDsToCopy.Length);
-			additionalOutputTextures = (additionalTexturePropertyIDsToCopy == null ? null : new Texture2D[additionalTexturePropertyIDsToCopy.Length]);
 			if (texturesToPackAtParam.Length < numTextureParamsToRepack)
 				Array.Resize(ref texturesToPackAtParam, numTextureParamsToRepack);
 			for (int i = 0; i < numTextureParamsToRepack; ++i) {
@@ -426,7 +429,8 @@ namespace Spine.Unity.AttachmentTools {
 					outputTexture = newTexture;
 				} else {
 					newMaterial.SetTexture(additionalTexturePropertyIDsToCopy[i - 1], newTexture);
-					additionalOutputTextures[i - 1] = newTexture;
+					if (additionalOutputTextures != null)
+						additionalOutputTextures[i - 1] = newTexture;
 				}
 			}
 
@@ -765,13 +769,18 @@ namespace Spine.Unity.AttachmentTools {
 				h = tempW;
 			}
 
-			// Note: originalW and originalH need to be scaled according to the
+			// Note: originalW, originalH, offsetX and offsetY need to be scaled according to the
 			// repacked width and height, repacking can mess with aspect ratio, etc.
-			int originalW = Mathf.RoundToInt((float)w * ((float)referenceRegion.originalWidth / (float)referenceRegion.width));
-			int originalH = Mathf.RoundToInt((float)h * ((float)referenceRegion.originalHeight / (float)referenceRegion.height));
+			bool flipsWH = referenceRegion.degrees == 90;
+			float wToReferenceW = (float)w / (float)referenceRegion.width;
+			float hToReferenceH = (float)h / (float)referenceRegion.height;
+			float scaleOriginalW = flipsWH ? hToReferenceH : wToReferenceW;
+			float scaleOriginalH = flipsWH ? wToReferenceW : hToReferenceH;
+			int originalW = Mathf.RoundToInt((float)referenceRegion.originalWidth * scaleOriginalW);
+			int originalH = Mathf.RoundToInt((float)referenceRegion.originalHeight * scaleOriginalH);
 
-			int offsetX = Mathf.RoundToInt((float)referenceRegion.offsetX * ((float)w / (float)referenceRegion.width));
-			int offsetY = Mathf.RoundToInt((float)referenceRegion.offsetY * ((float)h / (float)referenceRegion.height));
+			int offsetX = Mathf.RoundToInt((float)referenceRegion.offsetX * scaleOriginalW);
+			int offsetY = Mathf.RoundToInt((float)referenceRegion.offsetY * scaleOriginalH);
 
 			float u = uvRect.xMin;
 			float u2 = uvRect.xMax;

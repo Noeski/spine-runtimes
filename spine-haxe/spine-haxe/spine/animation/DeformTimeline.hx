@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,9 +23,9 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*****************************************************************************/
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package spine.animation;
 
@@ -36,13 +36,16 @@ import spine.Event;
 import spine.Skeleton;
 import spine.Slot;
 
+/** Changes a slot's spine.Slot.deform to deform a spine.attachments.VertexAttachment. */
 class DeformTimeline extends CurveTimeline implements SlotTimeline {
 	public var slotIndex:Int = 0;
 
-	/** The attachment that will be deformed. */
+	/** The attachment that will be deformed.
+	 * 
+	 * @see spine.attachments.VertexAttachment.getTimelineAttachment() */
 	public var attachment:VertexAttachment;
 
-	/** The vertices for each key frame. */
+	/** The vertices for each frame. */
 	public var vertices:Array<Array<Float>>;
 
 	public function new(frameCount:Int, bezierCount:Int, slotIndex:Int, attachment:VertexAttachment) {
@@ -61,14 +64,25 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 		return slotIndex;
 	}
 
-	/** Sets the time in seconds and the vertices for the specified key frame.
-	 * @param vertices Vertex positions for an unweighted VertexAttachment, or deform offsets if it has weights. */
+	/** Sets the time and vertices for the specified frame.
+	 * @param frame Between 0 and frameCount, inclusive.
+	 * @param time The frame time in seconds.
+	 * @param verticesOrDeform Vertex positions for an unweighted VertexAttachment, or deform offsets if it has weights. */
 	public function setFrame(frame:Int, time:Float, verticesOrDeform:Array<Float>):Void {
 		frames[frame] = time;
 		vertices[frame] = verticesOrDeform;
 	}
 
-	/** @param value1 Ignored (0 is used for a deform timeline).
+	/** @param bezier The bezier index.
+	 * @param frame The frame index.
+	 * @param value Ignored (0 is used for a deform timeline).
+	 * @param time1 The first time.
+	 * @param value1 Ignored (0 is used for a deform timeline).
+	 * @param cx1 The first control point x.
+	 * @param cy1 The first control point y.
+	 * @param cx2 The second control point x.
+	 * @param cy2 The second control point y.
+	 * @param time2 The second time.
 	 * @param value2 Ignored (1 is used for a deform timeline). */
 	public override function setBezier(bezier:Int, frame:Int, value:Float, time1:Float, value1:Float, cx1:Float, cy1:Float, cx2:Float, cy2:Float, time2:Float,
 			value2:Float):Void {
@@ -98,6 +112,8 @@ class DeformTimeline extends CurveTimeline implements SlotTimeline {
 		}
 	}
 
+	/** Returns the interpolated percentage for the specified time.
+	 * @param frame The frame before time. */
 	private function getCurvePercent(time:Float, frame:Int):Float {
 		var i:Int = Std.int(curves[frame]);
 		var x:Float;

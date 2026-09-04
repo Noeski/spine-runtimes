@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,42 +23,85 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *****************************************************************************/
 
 package spine;
 
-import lime.math.Rectangle;
-import haxe.ds.StringMap;
+import spine.Rectangle;
 import spine.attachments.Attachment;
 import spine.attachments.ClippingAttachment;
 import spine.attachments.MeshAttachment;
 import spine.attachments.PathAttachment;
 import spine.attachments.RegionAttachment;
 
+/** Stores the current pose for a skeleton.
+ *
+ * @see https://esotericsoftware.com/spine-runtime-architecture#Instance-objects Instance objects in the Spine Runtimes Guide
+ */
 class Skeleton {
 	private static var quadTriangles:Array<Int> = [0, 1, 2, 2, 3, 0];
+
 	private var _data:SkeletonData;
 
+	/** The skeleton's bones, sorted parent first. The root bone is always the first bone. */
 	public var bones:Array<Bone>;
+
+	/** The skeleton's slots. */
 	public var slots:Array<Slot>; // Setup pose draw order.
+
+	/** The skeleton's slots in the order they should be drawn. The returned array may be modified to change the draw order. */
 	public var drawOrder:Array<Slot>;
+
+	/** The skeleton's IK constraints. */
 	public var ikConstraints:Array<IkConstraint>;
+
+	/** The skeleton's transform constraints. */
 	public var transformConstraints:Array<TransformConstraint>;
+
+	/** The skeleton's path constraints. */
 	public var pathConstraints:Array<PathConstraint>;
+
+	/** The skeleton's physics constraints. */
 	public var physicsConstraints:Array<PhysicsConstraint>;
 
 	private var _updateCache:Array<Updatable> = new Array<Updatable>();
 	private var _skin:Skin;
 
+	/** The color to tint all the skeleton's attachments. */
 	public var color:Color = new Color(1, 1, 1, 1);
+
+	/** Scales the entire skeleton on the X axis.
+	 *
+	 * Bones that do not inherit scale are still affected by this property. */
 	public var scaleX:Float = 1;
-	public var scaleY:Float = 1;
+
+	/** Scales the entire skeleton on the Y axis.
+	 *
+	 * Bones that do not inherit scale are still affected by this property. */
+	public var scaleY(get, default):Float = 1;
+
+	function get_scaleY() {
+		return Bone.yDown ? -scaleY : scaleY;
+	}
+
+	/** Sets the skeleton X position, which is added to the root bone worldX position.
+	 *
+	 * Bones that do not inherit translation are still affected by this property. */
 	public var x:Float = 0;
+
+	/** Sets the skeleton Y position, which is added to the root bone worldY position.
+	 *
+	 * Bones that do not inherit translation are still affected by this property. */
 	public var y:Float = 0;
+
+	/** Returns the skeleton's time. This is used for time-based manipulations, such as spine.PhysicsConstraint.
+	 *
+	 * See Skeleton.update(). */
 	public var time:Float = 0;
 
+	/** Creates a new skeleton with the specified skeleton data. */
 	public function new(data:SkeletonData) {
 		if (data == null) {
 			throw new SpineException("data cannot be null.");
@@ -110,8 +153,8 @@ class Skeleton {
 		updateCache();
 	}
 
-	/** Caches information about bones and constraints. Must be called if bones, constraints, or weighted path attachments are
-	 * added or removed. */
+	/** Caches information about bones and constraints. Must be called if the Skeleton.skin is modified or if bones,
+	 * constraints, or weighted path attachments are added or removed. */
 	public function updateCache():Void {
 		_updateCache.resize(0);
 
@@ -284,7 +327,7 @@ class Skeleton {
 	}
 
 	private function sortPathConstraintAttachment(skin:Skin, slotIndex:Int, slotBone:Bone):Void {
-		var dict:StringMap<Attachment> = skin.attachments[slotIndex];
+		var dict = skin.attachments[slotIndex];
 		if (dict != null) {
 			for (attachment in dict.keyValueIterator()) {
 				sortPathConstraintAttachment2(attachment.value, slotBone);
@@ -312,10 +355,12 @@ class Skeleton {
 		}
 	}
 
-	private function sortPhysicsConstraint (constraint: PhysicsConstraint) {
+	private function sortPhysicsConstraint(constraint:PhysicsConstraint) {
 		var bone:Bone = constraint.bone;
-		constraint.active = bone.active && (!constraint.data.skinRequired || (skin != null && contains(skin.constraints, constraint.data)));
-		if (!constraint.active) return;
+		constraint.active = bone.active
+			&& (!constraint.data.skinRequired || (skin != null && contains(skin.constraints, constraint.data)));
+		if (!constraint.active)
+			return;
 
 		sortBone(bone);
 
@@ -345,9 +390,13 @@ class Skeleton {
 		}
 	}
 
-	/** Updates the world transform for each bone and applies constraints. */
+	/** Updates the world transform for each bone and applies all constraints.
+	 *
+	 * @see https://esotericsoftware.com/spine-runtime-skeletons#World-transforms World transforms in the Spine Runtimes Guide
+	 */
 	public function updateWorldTransform(physics:Physics):Void {
-		if (physics == null) throw new SpineException("physics is undefined");
+		if (physics == null)
+			throw new SpineException("physics is undefined");
 		for (bone in bones) {
 			bone.ax = bone.x;
 			bone.ay = bone.y;
@@ -363,6 +412,11 @@ class Skeleton {
 		}
 	}
 
+	/** Temporarily sets the root bone as a child of the specified bone, then updates the world transform for each bone and applies
+	 * all constraints.
+	 *
+	 * @see https://esotericsoftware.com/spine-runtime-skeletons#World-transforms World transforms in the Spine Runtimes Guide
+	 */
 	public function updateWorldTransformWith(physics:Physics, parent:Bone):Void {
 		// Apply the parent bone transform to the root bone. The root bone always inherits scale, rotation and reflection.
 		var rootBone:Bone = rootBone;
@@ -391,7 +445,7 @@ class Skeleton {
 		}
 	}
 
-	/** Sets the bones, constraints, and slots to their setup pose values. */
+	/** Sets the bones, constraints, slots, and draw order to their setup pose values. */
 	public function setToSetupPose():Void {
 		setBonesToSetupPose();
 		setSlotsToSetupPose();
@@ -399,13 +453,19 @@ class Skeleton {
 
 	/** Sets the bones and constraints to their setup pose values. */
 	public function setBonesToSetupPose():Void {
-		for (bone in this.bones) bone.setToSetupPose();
-		for (constraint in this.ikConstraints) constraint.setToSetupPose();
-		for (constraint in this.transformConstraints) constraint.setToSetupPose();
-		for (constraint in this.pathConstraints) constraint.setToSetupPose();
-		for (constraint in this.physicsConstraints) constraint.setToSetupPose();
+		for (bone in this.bones)
+			bone.setToSetupPose();
+		for (constraint in this.ikConstraints)
+			constraint.setToSetupPose();
+		for (constraint in this.transformConstraints)
+			constraint.setToSetupPose();
+		for (constraint in this.pathConstraints)
+			constraint.setToSetupPose();
+		for (constraint in this.physicsConstraints)
+			constraint.setToSetupPose();
 	}
 
+	/** Sets the slots and draw order to their setup pose values. */
 	public function setSlotsToSetupPose():Void {
 		var i:Int = 0;
 		for (slot in slots) {
@@ -414,18 +474,21 @@ class Skeleton {
 		}
 	}
 
+	/** The skeleton's setup pose data. */
 	public var data(get, never):SkeletonData;
 
 	private function get_data():SkeletonData {
 		return _data;
 	}
 
+	/** The list of bones and constraints, sorted in the order they should be updated, as computed by Skeleton.updateCache(). */
 	public var getUpdateCache(get, never):Array<Updatable>;
 
 	private function get_getUpdateCache():Array<Updatable> {
 		return _updateCache;
 	}
 
+	/** Returns the root bone, or null if the skeleton has no bones. */
 	public var rootBone(get, never):Bone;
 
 	private function get_rootBone():Bone {
@@ -434,7 +497,8 @@ class Skeleton {
 		return bones[0];
 	}
 
-	/** @return May be null. */
+	/** Finds a bone by comparing each bone's name. It is more efficient to cache the results of this method than to call it
+	 * repeatedly. */
 	public function findBone(boneName:String):Bone {
 		if (boneName == null) {
 			throw new SpineException("boneName cannot be null.");
@@ -460,7 +524,8 @@ class Skeleton {
 		return -1;
 	}
 
-	/** @return May be null. */
+	/** Finds a slot by comparing each slot's name. It is more efficient to cache the results of this method than to call it
+	 * repeatedly. */
 	public function findSlot(slotName:String):Slot {
 		if (slotName == null) {
 			throw new SpineException("slotName cannot be null.");
@@ -472,8 +537,12 @@ class Skeleton {
 		return null;
 	}
 
+	/** The skeleton's current skin. */
 	public var skinName(get, set):String;
 
+	/** Sets a skin by name.
+	 *
+	 * See Skeleton.skin. */
 	private function set_skinName(skinName:String):String {
 		var skin:Skin = data.findSkin(skinName);
 		if (skin == null)
@@ -487,16 +556,23 @@ class Skeleton {
 		return _skin == null ? null : _skin.name;
 	}
 
+	/** The skeleton's current skin. */
 	public var skin(get, set):Skin;
 
 	private function get_skin():Skin {
 		return _skin;
 	}
 
-	/** Sets the skin used to look up attachments before looking in the {@link SkeletonData#getDefaultSkin() default skin}.
-	 * Attachments from the new skin are attached if the corresponding attachment from the old skin was attached. If there was
-	 * no old skin, each slot's setup mode attachment is attached from the new skin.
-	 * @param newSkin May be null. */
+	/** Sets the skin used to look up attachments before looking in the spine.SkeletonData default skin. If the
+	 * skin is changed, Skeleton.updateCache() is called.
+	 *
+	 * Attachments from the new skin are attached if the corresponding attachment from the old skin was attached. If there was no
+	 * old skin, each slot's setup mode attachment is attached from the new skin.
+	 *
+	 * After changing the skin, the visible attachments can be reset to those attached in the setup pose by calling
+	 * Skeleton.setSlotsToSetupPose(). Also, often spine.AnimationState.apply() is called before the next time the
+	 * skeleton is rendered to allow any attachment keys in the current animation(s) to hide or show attachments from the new
+	 * skin. */
 	private function set_skin(newSkin:Skin):Skin {
 		if (newSkin == _skin)
 			return null;
@@ -521,12 +597,19 @@ class Skeleton {
 		return _skin;
 	}
 
-	/** @return May be null. */
+	/** Finds an attachment by looking in the Skeleton.skin and spine.SkeletonData defaultSkin using the slot name and attachment
+	 * name.
+	 *
+	 * See Skeleton.getAttachmentForSlotIndex(). */
 	public function getAttachmentForSlotName(slotName:String, attachmentName:String):Attachment {
 		return getAttachmentForSlotIndex(data.findSlot(slotName).index, attachmentName);
 	}
 
-	/** @return May be null. */
+	/** Finds an attachment by looking in the Skeleton.skin and spine.SkeletonData defaultSkin using the slot index and
+	 * attachment name. First the skin is checked and if the attachment was not found, the default skin is checked.
+	 *
+	 * @see https://esotericsoftware.com/spine-runtime-skins Runtime skins in the Spine Runtimes Guide
+	 */
 	public function getAttachmentForSlotIndex(slotIndex:Int, attachmentName:String):Attachment {
 		if (attachmentName == null)
 			throw new SpineException("attachmentName cannot be null.");
@@ -540,7 +623,9 @@ class Skeleton {
 		return null;
 	}
 
-	/** @param attachmentName May be null. */
+	/** A convenience method to set an attachment by finding the slot with Skeleton.findSlot(), finding the attachment with
+	 * Skeleton.getAttachmentForSlotIndex(), then setting the slot's spine.Slot attachment.
+	 * @param attachmentName May be null to clear the slot's attachment. */
 	public function setAttachment(slotName:String, attachmentName:String):Void {
 		if (slotName == null)
 			throw new SpineException("slotName cannot be null.");
@@ -562,7 +647,8 @@ class Skeleton {
 		throw new SpineException("Slot not found: " + slotName);
 	}
 
-	/** @return May be null. */
+	/** Finds an IK constraint by comparing each IK constraint's name. It is more efficient to cache the results of this method
+	 * than to call it repeatedly. */
 	public function findIkConstraint(constraintName:String):IkConstraint {
 		if (constraintName == null)
 			throw new SpineException("constraintName cannot be null.");
@@ -573,7 +659,8 @@ class Skeleton {
 		return null;
 	}
 
-	/** @return May be null. */
+	/** Finds a transform constraint by comparing each transform constraint's name. It is more efficient to cache the results of
+	 * this method than to call it repeatedly. */
 	public function findTransformConstraint(constraintName:String):TransformConstraint {
 		if (constraintName == null)
 			throw new SpineException("constraintName cannot be null.");
@@ -584,7 +671,8 @@ class Skeleton {
 		return null;
 	}
 
-	/** @return May be null. */
+	/** Finds a path constraint by comparing each path constraint's name. It is more efficient to cache the results of this method
+	 * than to call it repeatedly. */
 	public function findPathConstraint(constraintName:String):PathConstraint {
 		if (constraintName == null)
 			throw new SpineException("constraintName cannot be null.");
@@ -595,7 +683,8 @@ class Skeleton {
 		return null;
 	}
 
-	/** @return May be null. */
+	/** Finds a physics constraint by comparing each physics constraint's name. It is more efficient to cache the results of this
+	 * method than to call it repeatedly. */
 	public function findPhysicsConstraint(constraintName:String):PhysicsConstraint {
 		if (constraintName == null)
 			throw new SpineException("constraintName cannot be null.");
@@ -613,7 +702,9 @@ class Skeleton {
 	private var _tempVertices = new Array<Float>();
 	private var _bounds = new Rectangle();
 
-	public function getBounds(clipper: SkeletonClipping = null):Rectangle {
+	/** Returns the axis aligned bounding box (AABB) of the region and mesh attachments for the current pose. Optionally applies
+	 * clipping. */
+	public function getBounds(clipper:SkeletonClipping = null):Rectangle {
 		var minX:Float = Math.POSITIVE_INFINITY;
 		var minY:Float = Math.POSITIVE_INFINITY;
 		var maxX:Float = Math.NEGATIVE_INFINITY;
@@ -659,9 +750,11 @@ class Skeleton {
 					ii += 2;
 				}
 			}
-			if (clipper != null) clipper.clipEndWithSlot(slot);
+			if (clipper != null)
+				clipper.clipEndWithSlot(slot);
 		}
-		if (clipper != null) clipper.clipEnd();
+		if (clipper != null)
+			clipper.clipEnd();
 		_bounds.x = minX;
 		_bounds.y = minY;
 		_bounds.width = maxX - minX;
@@ -669,16 +762,19 @@ class Skeleton {
 		return _bounds;
 	}
 
-	public function update (delta:Float):Void {
+	/** Increments the skeleton's Skeleton.time. */
+	public function update(delta:Float):Void {
 		time += delta;
 	}
 
-	public function physicsTranslate (x:Float, y:Float):Void {
+	/** Calls spine.PhysicsConstraint.translate() for each physics constraint. */
+	public function physicsTranslate(x:Float, y:Float):Void {
 		for (physicsConstraint in physicsConstraints)
 			physicsConstraint.translate(x, y);
 	}
 
-	public function physicsRotate (x:Float, y:Float, degrees:Float):Void {
+	/** Calls spine.PhysicsConstraint.rotate() for each physics constraint. */
+	public function physicsRotate(x:Float, y:Float, degrees:Float):Void {
 		for (physicsConstraint in physicsConstraints)
 			physicsConstraint.rotate(x, y, degrees);
 	}

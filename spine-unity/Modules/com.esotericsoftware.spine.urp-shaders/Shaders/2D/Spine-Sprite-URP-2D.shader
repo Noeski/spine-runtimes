@@ -71,10 +71,12 @@ Shader "Universal Render Pipeline/2D/Spine/Sprite"
 			// Required to compile gles 2.0 with standard srp library
 			#pragma prefer_hlslcc gles
 			#pragma exclude_renderers d3d11_9x
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_0 __
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_1 __
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_2 __
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_3 __
+			#if UNITY_VERSION < 60030000 // before  Unity 6000.3
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_0 __
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_1 __
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_2 __
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_3 __
+			#endif
 
 			// -------------------------------------
 			// Material Keywords
@@ -106,7 +108,12 @@ Shader "Universal Render Pipeline/2D/Spine/Sprite"
 			#define fixed3 half3
 			#define fixed half
 
-			#include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/LightingUtility.hlsl"
+			#if UNITY_VERSION < 60030000 // before Unity 6000.3
+				#include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/LightingUtility.hlsl"
+			#else
+				#include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/Core2D.hlsl"
+				#include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/ShapeLightShared.hlsl"
+			#endif
 
 			#define SPRITE_SHADER_2D
 			#include "../Include/Spine-Input-Sprite-URP.hlsl"

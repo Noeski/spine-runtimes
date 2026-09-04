@@ -71,7 +71,7 @@
 			batcher = new spine.PolygonBatcher(ctx);
 			mvp.ortho2d(0, 0, canvas.width - 1, canvas.height - 1);
 			skeletonRenderer = new spine.SkeletonRenderer(ctx);
-			assetManager = new spine.AssetManager(ctx, "assets/");
+			assetManager = new spine.AssetManager(ctx, "/assets/");
 
 			// Create a debug renderer and the ShapeRenderer it needs to render lines.
 			debugRenderer = new spine.SkeletonDebugRenderer(ctx);

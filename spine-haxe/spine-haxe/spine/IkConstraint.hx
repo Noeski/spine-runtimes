@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,24 +23,42 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*****************************************************************************/
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package spine;
 
+/** Stores the current pose for an IK constraint. An IK constraint adjusts the rotation of 1 or 2 constrained bones so the tip of
+ * the last bone is as close to the target bone as possible.
+ *
+ * @see https://esotericsoftware.com/spine-ik-constraints IK constraints in the Spine User Guide */
 class IkConstraint implements Updatable {
 	private var _data:IkConstraintData;
 
+	/** The bones that will be modified by this IK constraint. */
 	public var bones:Array<Bone>;
+	/** The bone that is the IK target. */
 	public var target:Bone;
+	/** For two bone IK, controls the bend direction of the IK bones, either 1 or -1. */
 	public var bendDirection:Int = 0;
+	/** For one bone IK, when true and the target is too close, the bone is scaled to reach it. */
 	public var compress:Bool = false;
+	/** When true and the target is out of range, the parent bone is scaled to reach it.
+	 *
+	 * For two bone IK: 1) the child bone's local Y translation is set to 0, 2) stretch is not applied if getSoftness() is
+	 * > 0, and 3) if the parent bone has local nonuniform scale, stretch is not applied. */
 	public var stretch:Bool = false;
+	/** A percentage (0-1) that controls the mix between the constrained and unconstrained rotation.
+	 *
+	 * For two bone IK: if the parent bone has local nonuniform scale, the child bone's local Y translation is set to 0. */
 	public var mix:Float = 0;
+	/** For two bone IK, the target bone's distance from the maximum reach of the bones where rotation begins to slow. The bones
+	 * will not straighten completely until the target is this far out of range. */
 	public var softness:Float = 0;
 	public var active:Bool = false;
 
+	/** Copy constructor. */
 	public function new(data:IkConstraintData, skeleton:Skeleton) {
 		if (data == null)
 			throw new SpineException("data cannot be null.");
@@ -74,6 +92,7 @@ class IkConstraint implements Updatable {
 		stretch = data.stretch;
 	}
 
+	/** Applies the constraint to the constrained bones. */
 	public function update(physics:Physics):Void {
 		if (mix == 0)
 			return;
@@ -85,6 +104,7 @@ class IkConstraint implements Updatable {
 		}
 	}
 
+	/** The IK constraint's setup pose data. */
 	public var data(get, never):IkConstraintData;
 
 	private function get_data():IkConstraintData {
@@ -92,11 +112,10 @@ class IkConstraint implements Updatable {
 	}
 
 	public function toString():String {
-		return _data.name != null ? _data.name : "IkContstraint?";
+		return _data.name != null ? _data.name : "IkConstraint?";
 	}
 
-	/** Adjusts the bone rotation so the tip is as close to the target position as possible. The target is specified in the world
-	 * coordinate system. */
+	/** Applies 1 bone IK. The target is specified in the world coordinate system. */
 	static public function apply1(bone:Bone, targetX:Float, targetY:Float, compress:Bool, stretch:Bool, uniform:Bool, alpha:Float):Void {
 		var p:Bone = bone.parent;
 		var pa:Float = p.a, pb:Float = p.b, pc:Float = p.c, pd:Float = p.d;
@@ -164,9 +183,8 @@ class IkConstraint implements Updatable {
 		bone.updateWorldTransformWith(bone.ax, bone.ay, bone.arotation + rotationIK * alpha, sx, sy, bone.ashearX, bone.ashearY);
 	}
 
-	/** Adjusts the parent and child bone rotations so the tip of the child is as close to the target position as possible. The
-	 * target is specified in the world coordinate system.
-	 * @param child Any descendant bone of the parent. */
+	/** Applies 2 bone IK. The target is specified in the world coordinate system.
+	 * @param child A direct descendant of the parent bone. */
 	static public function apply2(parent:Bone, child:Bone, targetX:Float, targetY:Float, bendDir:Int, stretch:Bool, uniform:Bool, softness:Float,
 			alpha:Float):Void {
 		if (parent.inherit != Inherit.normal || child.inherit != Inherit.normal) return;

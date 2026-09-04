@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,14 +23,18 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*****************************************************************************/
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package spine;
 
 import spine.attachments.PathAttachment;
 
+/** Stores the current pose for a path constraint. A path constraint adjusts the rotation, translation, and scale of the
+ * constrained bones so they follow a PathAttachment.
+ *
+ * @see https://esotericsoftware.com/spine-path-constraints Path constraints in the Spine User Guide */
 class PathConstraint implements Updatable {
 	private static inline var NONE:Int = -1;
 	private static inline var BEFORE:Int = -2;
@@ -40,11 +44,17 @@ class PathConstraint implements Updatable {
 	private var _data:PathConstraintData;
 	private var _bones:Array<Bone>;
 
+	/** The slot whose path attachment will be used to constrained the bones. */
 	public var target:Slot;
+	/** The position along the path. */
 	public var position:Float = 0;
+	/** The spacing between bones. */
 	public var spacing:Float = 0;
+	/** A percentage (0-1) that controls the mix between the constrained and unconstrained rotation. */
 	public var mixRotate:Float = 0;
+	/** A percentage (0-1) that controls the mix between the constrained and unconstrained translation X. */
 	public var mixX:Float = 0;
+	/** A percentage (0-1) that controls the mix between the constrained and unconstrained translation Y. */
 	public var mixY:Float = 0;
 
 	private var _spaces(default, never):Array<Float> = new Array<Float>();
@@ -89,6 +99,7 @@ class PathConstraint implements Updatable {
 		mixY = data.mixY;
 	}
 
+	/** Applies the constraint to the constrained bones. */
 	public function update(physics:Physics):Void {
 		var attachment:PathAttachment = cast(target.attachment, PathAttachment);
 		if (attachment == null)
@@ -585,12 +596,14 @@ class PathConstraint implements Updatable {
 		}
 	}
 
+	/** The bones that will be modified by this path constraint. */
 	public var bones(get, never):Array<Bone>;
 
 	private function get_bones():Array<Bone> {
 		return _bones;
 	}
 
+	/** The path constraint's setup pose data. */
 	public var data(get, never):PathConstraintData;
 
 	private function get_data():PathConstraintData {

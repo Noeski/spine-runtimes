@@ -49,6 +49,23 @@
     {
       "type": "cppvsdbg",
       "request": "launch",
+      "name": "debug scene extension",
+      "program": "godot/bin/godot.windows.editor.dev.x86_64.exe",
+      "args": ["--path", "example-v4-extension", "examples/13-load-from-disk/load-from-disk.tscn"],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build-extension",
+      "linux": {
+        "type": "lldb",
+        "program": "${workspaceFolder}/godot/bin/godot.linux.editor.dev.x86_64"
+      },
+      "osx": {
+        "type": "lldb",
+        "program": "${workspaceFolder}/godot/bin/godot.macos.editor.dev.arm64"
+      }
+    },
+    {
+      "type": "cppvsdbg",
+      "request": "launch",
       "name": "debug editor v4",
       "program": "godot/bin/godot.windows.editor.dev.x86_64.exe",
       "args": ["-e", "--path", "example-v4"],

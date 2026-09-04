@@ -56,7 +56,7 @@ VaryingsSpine ShadowPassVertexSprite(AttributesSpine input)
 	return output;
 }
 
-#include "SpineCoreShaders/ShaderShared.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/ShaderShared.cginc"
 
 half4 ShadowPassFragmentSprite(VaryingsSpine input) : SV_TARGET
 {

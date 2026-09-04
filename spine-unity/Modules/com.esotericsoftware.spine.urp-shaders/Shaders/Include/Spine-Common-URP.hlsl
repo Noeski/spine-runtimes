@@ -1,7 +1,7 @@
 #ifndef SPINE_COMMON_URP_INCLUDED
 #define SPINE_COMMON_URP_INCLUDED
 
-#ifdef USE_FORWARD_PLUS
+#if defined(USE_FORWARD_PLUS) || defined(USE_CLUSTER_LIGHT_LOOP)
     #define IS_URP_14_OR_NEWER 1
     #define IS_URP_12_OR_NEWER 1
 #else

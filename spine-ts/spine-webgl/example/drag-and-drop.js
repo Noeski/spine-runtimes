@@ -10,13 +10,13 @@ class App {
         this.canvas = canvas;
 
         // Load assets of Spineboy.
-        canvas.assetManager.loadBinary("assets/spineboy-pro.skel");
-        canvas.assetManager.loadTextureAtlas("assets/spineboy-pma.atlas");
+        canvas.assetManager.loadBinary("/assets/spineboy-pro.skel");
+        canvas.assetManager.loadTextureAtlas("/assets/spineboy-pma.atlas");
     }
 
     initialize(canvas) {
         // Load the Spineboy skeleton
-        this.loadSkeleton("assets/spineboy-pro.skel", "assets/spineboy-pma.atlas", "run");
+        this.loadSkeleton("/assets/spineboy-pro.skel", "/assets/spineboy-pma.atlas", "run");
 
         // Setup listener for animation selection box
         let animationSelectBox = document.body.querySelector("#animations");

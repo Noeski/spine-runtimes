@@ -1,5 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.spine_flutter_example">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
    <application
         android:label="spine_flutter_example"
         android:name="${applicationName}"

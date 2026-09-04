@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #ifndef SPINE_GODOT_EXTENSION
@@ -40,8 +40,13 @@
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_node.h"
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+#include "editor/animation/animation_player_editor_plugin.h"
+#include "editor/animation/animation_tree_editor_plugin.h"
+#else
 #include "editor/plugins/animation_player_editor_plugin.h"
 #include "editor/plugins/animation_tree_editor_plugin.h"
+#endif
 #endif
 
 void SpineAnimationTrack::_bind_methods() {
@@ -250,7 +255,13 @@ Ref<Animation> SpineAnimationTrack::create_animation(spine::Animation *animation
 
 	Ref<Animation> animation_ref;
 	INSTANTIATE(animation_ref);
-	animation_ref->set_name(String(animation->getName().buffer()) + (loop ? "" : "_looped"));
+	String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+	name = String::utf8(animation->getName().buffer());
+#else
+	name.parse_utf8(animation->getName().buffer());
+#endif
+	animation_ref->set_name(name + (loop ? "" : "_looped"));
 #if VERSION_MAJOR > 3
 	// animation_ref->set_loop(!loop);
 #else
@@ -260,7 +271,7 @@ Ref<Animation> SpineAnimationTrack::create_animation(spine::Animation *animation
 
 	animation_ref->add_track(Animation::TYPE_VALUE);
 	animation_ref->track_set_path(0, NodePath(".:animation_name"));
-	animation_ref->track_insert_key(0, 0, animation->getName().buffer());
+	animation_ref->track_insert_key(0, 0, name);
 
 	animation_ref->add_track(Animation::TYPE_VALUE);
 	animation_ref->track_set_path(1, NodePath(".:loop"));
@@ -298,7 +309,13 @@ void SpineAnimationTrack::update_animation_state(const Variant &variant_sprite) 
 			}
 			auto current_entry = animation_state->getCurrent(track_index);
 			bool should_set_mix = mix_duration >= 0;
-			bool should_set_animation = !current_entry || (animation_name != current_entry->getAnimation()->getName().buffer() || current_entry->getLoop() != loop);
+			String other_name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+			if (current_entry) other_name = String::utf8(current_entry->getAnimation()->getName().buffer());
+#else
+			if (current_entry) other_name.parse_utf8(current_entry->getAnimation()->getName().buffer());
+#endif
+			bool should_set_animation = !current_entry || (animation_name != other_name || current_entry->getLoop() != loop);
 
 			if (should_set_animation) {
 				if (!EMPTY(animation_name)) {
@@ -316,7 +333,7 @@ void SpineAnimationTrack::update_animation_state(const Variant &variant_sprite) 
 
 					if (debug) print_line(String("Setting animation {0} with mix_duration {1} on track {2} on {3}").format(varray(animation_name, mix_duration, track_index, sprite->get_name())).utf8().ptr());
 				} else {
-					if (!current_entry || (String("<empty>") != current_entry->getAnimation()->getName().buffer())) {
+					if (!current_entry || (String("<empty>") != other_name)) {
 						auto entry = animation_state->setEmptyAnimation(track_index, should_set_mix ? mix_duration : 0);
 						entry->setTrackEnd(FLT_MAX);
 						if (debug) print_line(String("Setting empty animation with mix_duration {0} on track {1} on {2}").format(varray(mix_duration, track_index, sprite->get_name())).utf8().ptr());
@@ -423,7 +440,13 @@ void SpineAnimationTrack::update_animation_state(const Variant &variant_sprite) 
 		if (animation_player->is_playing()) {
 			auto current_entry = animation_state->getCurrent(track_index);
 			bool should_set_mix = mix_duration >= 0;
-			bool should_set_animation = !current_entry || (animation_name != current_entry->getAnimation()->getName().buffer() || current_entry->getLoop() != loop) || animation_changed;
+			String other_name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+			if (current_entry) other_name = String::utf8(current_entry->getAnimation()->getName().buffer());
+#else
+			if (current_entry) other_name.parse_utf8(current_entry->getAnimation()->getName().buffer());
+#endif
+			bool should_set_animation = !current_entry || (animation_name != other_name || current_entry->getLoop() != loop) || animation_changed;
 			animation_changed = false;
 
 			if (should_set_animation) {
@@ -442,7 +465,7 @@ void SpineAnimationTrack::update_animation_state(const Variant &variant_sprite) 
 
 					if (debug) print_line(String("Setting animation {0} with mix_duration {1} on track {2} on {3}").format(varray(animation_name, mix_duration, track_index, sprite->get_name())).utf8().ptr());
 				} else {
-					if (!current_entry || (String("<empty>") != current_entry->getAnimation()->getName().buffer())) {
+					if (!current_entry || (String("<empty>") != other_name)) {
 						auto entry = animation_state->setEmptyAnimation(track_index, should_set_mix ? mix_duration : 0);
 						entry->setTrackEnd(FLT_MAX);
 						if (debug) print_line(String("Setting empty animation with mix_duration {0} on track {1} on {2}").format(varray(mix_duration, track_index, sprite->get_name())).utf8().ptr());

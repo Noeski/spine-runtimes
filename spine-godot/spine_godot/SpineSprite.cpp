@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #include "SpineSprite.h"
@@ -41,7 +41,9 @@
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
+#ifdef TOOLS_ENABLED
 #include <godot_cpp/classes/editor_interface.hpp>
+#endif
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -58,8 +60,13 @@
 #include "core/math/transform_2d.h"
 #include "core/variant/array.h"
 #include "scene/resources/mesh.h"
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 6)
+#include "servers/rendering/rendering_server.h"
+#else
 #include "servers/rendering_server.h"
-#if VERSION_MINOR > 0
+#endif
+#include "scene/resources/canvas_item_material.h"
+#if VERSION_MINOR > 0 && defined(TOOLS_ENABLED)
 #include "editor/editor_interface.h"
 #endif
 #else
@@ -433,6 +440,9 @@ void SpineSprite::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_screen_material", "material"), &SpineSprite::set_screen_material);
 	ClassDB::bind_method(D_METHOD("get_screen_material"), &SpineSprite::get_screen_material);
 
+	ClassDB::bind_method(D_METHOD("get_time_scale"), &SpineSprite::get_time_scale);
+	ClassDB::bind_method(D_METHOD("set_time_scale", "v"), &SpineSprite::set_time_scale);
+
 	ClassDB::bind_method(D_METHOD("set_debug_root", "v"), &SpineSprite::set_debug_root);
 	ClassDB::bind_method(D_METHOD("get_debug_root"), &SpineSprite::get_debug_root);
 	ClassDB::bind_method(D_METHOD("set_debug_root_color", "v"), &SpineSprite::set_debug_root_color);
@@ -508,7 +518,7 @@ void SpineSprite::_bind_methods() {
 	// Filled in in _get_property_list()
 }
 
-SpineSprite::SpineSprite() : update_mode(SpineConstant::UpdateMode_Process), preview_skin("Default"), preview_animation("-- Empty --"), preview_frame(false), preview_time(0), skeleton_clipper(nullptr), modified_bones(false) {
+SpineSprite::SpineSprite() : update_mode(SpineConstant::UpdateMode_Process), time_scale(1.0), preview_skin("Default"), preview_animation("-- Empty --"), preview_frame(false), preview_time(0), skeleton_clipper(nullptr), modified_bones(false) {
 	skeleton_clipper = new spine::SkeletonClipping();
 	auto statics = SpineSpriteStatics::instance();
 
@@ -816,12 +826,12 @@ void SpineSprite::update_skeleton(float delta) {
 		return;
 
 	emit_signal(SNAME("before_animation_state_update"), this);
-	animation_state->update(delta);
+	animation_state->update(delta * time_scale);
 	if (!is_visible_in_tree()) return;
 	emit_signal(SNAME("before_animation_state_apply"), this);
 	animation_state->apply(skeleton);
 	emit_signal(SNAME("before_world_transforms_change"), this);
-	skeleton->update(delta);
+	skeleton->update(delta * time_scale);
 	skeleton->update_world_transform(SpineConstant::Physics_Update);
 	modified_bones = false;
 	emit_signal(SNAME("world_transforms_changed"), this);
@@ -1216,12 +1226,19 @@ void SpineSprite::draw() {
 	}
 
 #if TOOLS_ENABLED
+	float editor_scale = 1.0;
+	if (Engine::get_singleton()->is_editor_hint()) editor_scale = EditorInterface::get_singleton()->get_editor_scale();
 
-	float editor_scale = EditorInterface::get_singleton()->get_editor_scale();
 	float inverse_zoom = 1 / get_viewport()->get_global_canvas_transform().get_scale().x * editor_scale;
 	Vector<String> hover_text_lines;
 	if (hovered_slot) {
-		hover_text_lines.push_back(String("Slot: ") + hovered_slot->getData().getName().buffer());
+		String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+		name = String::utf8(hovered_slot->getData().getName().buffer());
+#else
+		name.parse_utf8(hovered_slot->getData().getName().buffer());
+#endif
+		hover_text_lines.push_back(String("Slot: ") + name);
 	}
 
 	if (hovered_bone) {
@@ -1229,7 +1246,13 @@ void SpineSprite::draw() {
 		debug_bones_thickness *= 1.1;
 		draw_bone(hovered_bone, Color(debug_bones_color.r, debug_bones_color.g, debug_bones_color.b, 1));
 		debug_bones_thickness = thickness;
-		hover_text_lines.push_back(String("Bone: ") + hovered_bone->getData().getName().buffer());
+		String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+		name = String::utf8(hovered_bone->getData().getName().buffer());
+#else
+		name.parse_utf8(hovered_bone->getData().getName().buffer());
+#endif
+		hover_text_lines.push_back(String("Bone: ") + name);
 	}
 
 	auto global_scale = get_global_scale();
@@ -1393,6 +1416,14 @@ Ref<Material> SpineSprite::get_screen_material() {
 
 void SpineSprite::set_screen_material(Ref<Material> material) {
 	screen_material = material;
+}
+
+void SpineSprite::set_time_scale(float time_scale) {
+	this->time_scale = time_scale;
+}
+
+float SpineSprite::get_time_scale() {
+	return time_scale;
 }
 
 #ifndef SPINE_GODOT_EXTENSION

@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #include "spine-sdl-c.h"
@@ -73,6 +73,7 @@ void spSkeletonDrawable_draw(spSkeletonDrawable *self, struct SDL_Renderer *rend
 	spSkeletonClipping *clipper = self->clipper;
 	SDL_Texture *texture;
 	SDL_Vertex sdlVertex;
+
 	for (int i = 0; i < skeleton->slotsCount; ++i) {
 		spSlot *slot = skeleton->drawOrder[i];
 		spAttachment *attachment = slot->attachment;
@@ -139,6 +140,7 @@ void spSkeletonDrawable_draw(spSkeletonDrawable *self, struct SDL_Renderer *rend
 		Uint8 g = (Uint8) (skeleton->color.g * slot->color.g * attachmentColor->g * 255);
 		Uint8 b = (Uint8) (skeleton->color.b * slot->color.b * attachmentColor->b * 255);
 		Uint8 a = (Uint8) (skeleton->color.a * slot->color.a * attachmentColor->a * 255);
+
 		sdlVertex.color.r = r;
 		sdlVertex.color.g = g;
 		sdlVertex.color.b = b;
@@ -188,15 +190,16 @@ void spSkeletonDrawable_draw(spSkeletonDrawable *self, struct SDL_Renderer *rend
 					SDL_SetTextureBlendMode(texture, target);
 					break;
 				case SP_BLEND_MODE_MULTIPLY:
-					SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_MOD);
+					target = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_DST_COLOR, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_DST_ALPHA, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD);
+					SDL_SetTextureBlendMode(texture, target);
 					break;
 				case SP_BLEND_MODE_ADDITIVE:
 					target = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE, SDL_BLENDOPERATION_ADD);
-					SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
+					SDL_SetTextureBlendMode(texture, target);
 					break;
 				case SP_BLEND_MODE_SCREEN:
 					target = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD);
-					SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+					SDL_SetTextureBlendMode(texture, target);
 					break;
 			}
 		}

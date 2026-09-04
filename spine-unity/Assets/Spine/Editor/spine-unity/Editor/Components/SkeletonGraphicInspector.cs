@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #if UNITY_2018_3 || UNITY_2019 || UNITY_2018_3_OR_NEWER
@@ -59,7 +59,7 @@ namespace Spine.Unity.Editor {
 		static GUIStyle ReloadButtonStyle { get { return EditorStyles.miniButton; } }
 
 		protected SerializedProperty material, color;
-		protected SerializedProperty additiveMaterial, multiplyMaterial, screenMaterial;
+		protected SerializedProperty additiveMaterial, multiplyMaterial, screenMaterial, forceAdditiveMaterial;
 		protected SerializedProperty skeletonDataAsset, initialSkinName;
 		protected SerializedProperty startingAnimation, startingLoop, timeScale, freeze,
 			updateTiming, updateWhenInvisible, unscaledTime, layoutScaleMode, editReferenceRect;
@@ -167,6 +167,7 @@ namespace Spine.Unity.Editor {
 			additiveMaterial = so.FindProperty("additiveMaterial");
 			multiplyMaterial = so.FindProperty("multiplyMaterial");
 			screenMaterial = so.FindProperty("screenMaterial");
+			forceAdditiveMaterial = so.FindProperty("forceAdditiveMaterial");
 
 			skeletonDataAsset = so.FindProperty("skeletonDataAsset");
 			initialSkinName = so.FindProperty("initialSkinName");
@@ -356,16 +357,22 @@ namespace Spine.Unity.Editor {
 
 									bool usesAdditiveMaterial = blendModeMaterials.applyAdditiveMaterial;
 									bool pmaVertexColors = thisSkeletonGraphic.MeshGenerator.settings.pmaVertexColors;
-									if (pmaVertexColors)
-										using (new EditorGUI.DisabledGroupScope(true)) {
-											EditorGUILayout.LabelField("Additive Material - Unused with PMA Vertex Colors", EditorStyles.label);
-										}
-									else if (usesAdditiveMaterial)
+									bool forceAdditiveEnabled = thisSkeletonGraphic.forceAdditiveMaterial;
+									if (pmaVertexColors) {
+										EditorGUILayout.PropertyField(forceAdditiveMaterial, SpineInspectorUtility.TempContent("Force Additive Material", null, "Still use 'Additive' material regardless of enabled 'PMA Vertex Colors'."));
+										if (forceAdditiveEnabled)
+											EditorGUILayout.PropertyField(additiveMaterial, SpineInspectorUtility.TempContent("Additive Material", null, "SkeletonGraphic Material for 'Additive' blend mode slots. Unused when 'PMA Vertex Colors' is enabled."));
+										else
+											using (new EditorGUI.DisabledGroupScope(true)) {
+												EditorGUILayout.LabelField("Additive Material - Unused with PMA Vertex Colors", EditorStyles.label);
+											}
+									} else if (usesAdditiveMaterial) {
 										EditorGUILayout.PropertyField(additiveMaterial, SpineInspectorUtility.TempContent("Additive Material", null, "SkeletonGraphic Material for 'Additive' blend mode slots. Unused when 'PMA Vertex Colors' is enabled."));
-									else
+									} else {
 										using (new EditorGUI.DisabledGroupScope(true)) {
 											EditorGUILayout.LabelField("No Additive Mat - 'Apply Additive Material' disabled at SkeletonDataAsset", EditorStyles.label);
 										}
+									}
 									EditorGUILayout.PropertyField(multiplyMaterial, SpineInspectorUtility.TempContent("Multiply Material", null, "SkeletonGraphic Material for 'Multiply' blend mode slots."));
 									EditorGUILayout.PropertyField(screenMaterial, SpineInspectorUtility.TempContent("Screen Material", null, "SkeletonGraphic Material for 'Screen' blend mode slots."));
 								}

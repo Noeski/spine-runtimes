@@ -13,18 +13,18 @@ packages:
     dependency: transitive
     description:
       name: characters
-      sha256: "04a925763edad70e8443c99234dc3328f442e811f1d8fd1a72f1c8ad0f69a605"
+      sha256: f71061c654a3380576a52b451dd5532377954cf9dbd272a78fc8479606670803
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.0"
+    version: "1.4.0"
   collection:
     dependency: transitive
     description:
       name: collection
-      sha256: ee67cb0715911d28db6bf4af1026078bd6f0128b07a5f66fb2ed94ec6783c09a
+      sha256: "2f5709ae4d3d59dd8f7cd309b4e023046b57d8a6c82130785d2b0e5868084e76"
       url: "https://pub.dev"
     source: hosted
-    version: "1.18.0"
+    version: "1.19.1"
   crypto:
     dependency: transitive
     description:
@@ -53,10 +53,10 @@ packages:
     dependency: "direct main"
     description:
       name: flame
-      sha256: "2a2352741500ce47823dcf212f06b23e9bdb622454eab90244ee6da58e23b488"
+      sha256: f9e7a100c25f8d6bfd143bf325a9689c509216cd1c8133ce4684955c56770de7
       url: "https://pub.dev"
     source: hosted
-    version: "1.15.0"
+    version: "1.28.1"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -114,26 +114,26 @@ packages:
     dependency: transitive
     description:
       name: material_color_utilities
-      sha256: "0e0a020085b65b6083975e499759762399b4475f766c21668c4ecca34ea74e5a"
+      sha256: f7142bb1154231d7ea5f96bc7bde4bda2a0945d2806bb11670e30b850d56bdec
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.0"
+    version: "0.11.1"
   meta:
     dependency: transitive
     description:
       name: meta
-      sha256: "7687075e408b093f36e6bbf6c91878cc0d4cd10f409506f7bc996f68220b9136"
+      sha256: e3641ec5d63ebf0d9b41bd43201a66e3fc79a65db5f61fc181f04cd27aab950c
       url: "https://pub.dev"
     source: hosted
-    version: "1.12.0"
+    version: "1.16.0"
   ordered_set:
     dependency: transitive
     description:
       name: ordered_set
-      sha256: "3fedcc9121b3ba24c0a84f32da2989c42e36c159b73feadbc2f402dc55966b81"
+      sha256: dc68b8f1abc7115b81cf890bf7d2ece4ed1d95e0f3e486ab4b64ab3d16d2ea42
       url: "https://pub.dev"
     source: hosted
-    version: "5.0.1"
+    version: "7.0.0"
   path:
     dependency: transitive
     description:
@@ -154,7 +154,7 @@ packages:
     dependency: transitive
     description: flutter
     source: sdk
-    version: "0.0.99"
+    version: "0.0.0"
   source_span:
     dependency: transitive
     description:
@@ -169,7 +169,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "4.2.29"
+    version: "4.2.35"
   string_scanner:
     dependency: transitive
     description:
@@ -206,10 +206,10 @@ packages:
     dependency: transitive
     description:
       name: web_ffi_fork
-      sha256: "7466228b7fc6a29ee1b5f6ab7ee2473847367a70fb523eb1a7c1d7a6a9841589"
+      sha256: "557b3008bb3c8547ee63eac6e53c0ebebb443da9d7558b3f1b98e1ed59989a11"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.4"
+    version: "0.7.5"
 sdks:
-  dart: ">=3.3.0-0 <4.0.0"
-  flutter: ">=3.16.0"
+  dart: ">=3.7.0-0 <4.0.0"
+  flutter: ">=3.27.1"

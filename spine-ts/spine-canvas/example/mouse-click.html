@@ -24,7 +24,7 @@
 		skeletonRenderer.triangleRendering = true;
 
 		// Load the assets.
-		assetManager = new spine.AssetManager("assets/");
+		assetManager = new spine.AssetManager("/assets/");
 		assetManager.loadText("spineboy-ess.json");
 		assetManager.loadTextureAtlas("spineboy.atlas");
 		await assetManager.loadAll();

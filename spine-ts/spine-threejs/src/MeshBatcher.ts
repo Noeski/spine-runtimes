@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,21 +23,19 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import * as THREE from "three"
-
-import { ThreeJsTexture, ThreeBlendOptions } from "./ThreeJsTexture.js";
 import { BlendMode } from "@esotericsoftware/spine-core";
+import * as THREE from "three"
 import { SkeletonMesh } from "./SkeletonMesh.js";
+import { ThreeBlendOptions, ThreeJsTexture } from "./ThreeJsTexture.js";
 
 export type MaterialWithMap = THREE.Material & { map: THREE.Texture | null };
 export class MeshBatcher extends THREE.Mesh {
 	public static MAX_VERTICES = 10920;
 
-	// private static VERTEX_SIZE = 9;
 	private vertexSize = 9;
 	private vertexBuffer: THREE.InterleavedBuffer;
 	private vertices: Float32Array;
@@ -59,19 +57,35 @@ export class MeshBatcher extends THREE.Mesh {
 			this.vertexSize += 3;
 		}
 
-		let vertices = this.vertices = new Float32Array(maxVertices * this.vertexSize);
-		let indices = this.indices = new Uint16Array(maxVertices * 3);
-		let geo = new THREE.BufferGeometry();
-		let vertexBuffer = this.vertexBuffer = new THREE.InterleavedBuffer(vertices, this.vertexSize);
-		vertexBuffer.usage = WebGLRenderingContext.DYNAMIC_DRAW;
+		this.vertices = new Float32Array(maxVertices * this.vertexSize);
+		this.indices = new Uint16Array(maxVertices * 3);
+
+		const normals = new Float32Array(maxVertices * 3);
+		for (let i = 0; i < maxVertices * 3; i += 3) {
+			normals[i] = 0;
+			normals[i + 1] = 0;
+			normals[i + 2] = -1;
+		}
+
+		const vertexBuffer = new THREE.InterleavedBuffer(this.vertices, this.vertexSize)
+		this.vertexBuffer = vertexBuffer;
+		this.vertexBuffer.usage = WebGLRenderingContext.DYNAMIC_DRAW;
+
+		const geo = new THREE.BufferGeometry();
 		geo.setAttribute("position", new THREE.InterleavedBufferAttribute(vertexBuffer, 3, 0, false));
 		geo.setAttribute("color", new THREE.InterleavedBufferAttribute(vertexBuffer, 4, 3, false));
 		geo.setAttribute("uv", new THREE.InterleavedBufferAttribute(vertexBuffer, 2, 7, false));
-		if (twoColorTint) {
+		if (twoColorTint)
 			geo.setAttribute("darkcolor", new THREE.InterleavedBufferAttribute(vertexBuffer, 3, 9, false));
-		}
-		geo.setIndex(new THREE.BufferAttribute(indices, 1));
-		geo.getIndex()!.usage = WebGLRenderingContext.DYNAMIC_DRAW;
+
+		const normalBuffer = new THREE.BufferAttribute(normals, 3);
+		normalBuffer.usage = WebGLRenderingContext.STATIC_DRAW;
+		geo.setAttribute("normal", normalBuffer);
+
+		const indexBuffer = new THREE.BufferAttribute(this.indices, 1);
+		indexBuffer.usage = WebGLRenderingContext.DYNAMIC_DRAW;
+		geo.setIndex(indexBuffer);
+
 		geo.drawRange.start = 0;
 		geo.drawRange.count = 0;
 		this.geometry = geo;
@@ -172,15 +186,14 @@ export class MeshBatcher extends THREE.Mesh {
 	end () {
 		this.vertexBuffer.needsUpdate = this.verticesLength > 0;
 		this.vertexBuffer.addUpdateRange(0, this.verticesLength);
-		let geo = (<THREE.BufferGeometry>this.geometry);
+		const geo = (<THREE.BufferGeometry>this.geometry);
 		this.closeMaterialGroups();
-		let index = geo.getIndex();
+		const index = geo.getIndex();
 		if (!index) throw new Error("BufferAttribute must not be null.");
 		index.needsUpdate = this.indicesLength > 0;
 		index.addUpdateRange(0, this.indicesLength);
 		geo.drawRange.start = 0;
 		geo.drawRange.count = this.indicesLength;
-		geo.computeVertexNormals();
 	}
 
 	addMaterialGroup (indicesLength: number, materialGroup: number) {
@@ -309,7 +322,7 @@ const spineOnBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) 
 			#ifdef USE_SPINE_DARK_TINT
 				#ifdef USE_COLOR_ALPHA
 						diffuseColor.a *= vColor.a;
-						diffuseColor.rgb *= (1.0 - diffuseColor.rgb) * v_dark.rgb + diffuseColor.rgb * vColor.rgb;
+						diffuseColor.rgb = (diffuseColor.a - diffuseColor.rgb) * v_dark.rgb + diffuseColor.rgb * vColor.rgb;
 				#endif
 			#else
 				#ifdef USE_COLOR_ALPHA

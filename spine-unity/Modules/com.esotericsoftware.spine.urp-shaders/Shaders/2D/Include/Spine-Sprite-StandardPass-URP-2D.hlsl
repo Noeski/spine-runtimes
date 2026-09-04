@@ -1,30 +1,32 @@
 #ifndef SPRITE_STANDARD_PASS_URP_INCLUDED
 #define SPRITE_STANDARD_PASS_URP_INCLUDED
 
-#include "../Include/SpineCoreShaders/ShaderShared.cginc"
-#include "../Include/SpineCoreShaders/SpriteLighting.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/ShaderShared.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/SpriteLighting.cginc"
 #if defined(_ALPHAPREMULTIPLY_ON)
 	#undef _STRAIGHT_ALPHA_INPUT
 #elif !defined(_STRAIGHT_ALPHA_INPUT)
 	#define _STRAIGHT_ALPHA_INPUT
 #endif
-#include "../Include/SpineCoreShaders/Spine-Skeleton-Tint-Common.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/Spine-Skeleton-Tint-Common.cginc"
 
-#if USE_SHAPE_LIGHT_TYPE_0
-SHAPE_LIGHT(0)
-#endif
+#if UNITY_VERSION < 60030000 // before Unity 6000.3
+	#if USE_SHAPE_LIGHT_TYPE_0
+	SHAPE_LIGHT(0)
+	#endif
 
-#if USE_SHAPE_LIGHT_TYPE_1
-SHAPE_LIGHT(1)
-#endif
+	#if USE_SHAPE_LIGHT_TYPE_1
+	SHAPE_LIGHT(1)
+	#endif
 
-#if USE_SHAPE_LIGHT_TYPE_2
-SHAPE_LIGHT(2)
-#endif
+	#if USE_SHAPE_LIGHT_TYPE_2
+	SHAPE_LIGHT(2)
+	#endif
 
-#if USE_SHAPE_LIGHT_TYPE_3
-SHAPE_LIGHT(3)
-#endif
+	#if USE_SHAPE_LIGHT_TYPE_3
+	SHAPE_LIGHT(3)
+	#endif
+#endif // #if UNITY_VERSION < 60030000 // before Unity 6000.3
 
 TEXTURE2D(_MaskTex);
 SAMPLER(sampler_MaskTex);

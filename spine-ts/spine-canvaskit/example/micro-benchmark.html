@@ -37,8 +37,8 @@
     const surface = ck.MakeCanvasSurface('foo');
     surface.getCanvas().scale(dpr, dpr);
 
-    const atlas = await spine.loadTextureAtlas(ck, "assets/spineboy.atlas", readFile);
-    const skeletonData = await spine.loadSkeletonData("assets/spineboy-pro.skel", atlas, readFile);
+    const atlas = await spine.loadTextureAtlas(ck, "/assets/spineboy.atlas", readFile);
+    const skeletonData = await spine.loadSkeletonData("/assets/spineboy-pro.skel", atlas, readFile);
 
     // Instantiate 100 drawables, randomly placed and scaled.
     const drawables = [];

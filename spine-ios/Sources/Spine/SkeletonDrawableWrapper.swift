@@ -1,3 +1,32 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated April 5, 2025. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2025, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import Foundation
 import Spine
 import SpineCppLite
@@ -17,7 +46,7 @@ import UIKit
 /// To update the ``AnimationState`` and apply it to the ``Skeleton`` call the ``AnimationStateWrapper/update`` function, providing it
 /// a delta time in seconds to advance the animations.
 ///
-/// To render the current pose of the ``Skeleton`` as a `CGImage`, use ``SkeletonDrawableWrapper/renderToImage(size:backgroundColor:scaleFactor:)``.
+/// To render the current pose of the ``Skeleton`` as a `CGImage`, use ``SkeletonDrawableWrapper/renderToImage(size:boundsProvider:backgroundColor:scaleFactor:)``.
 ///
 /// When the skeleton drawable is no longer needed, call the ``SkeletonDrawableWrapper/dispose()`` method to release its resources. If
 /// the skeleton drawable was constructed from a shared ``Atlas`` and ``SkeletonData``, make sure to dispose the
@@ -94,22 +123,22 @@ public final class SkeletonDrawableWrapper: NSObject {
         self.skeletonData = skeletonData
             
         guard let nativeSkeletonDrawable = spine_skeleton_drawable_create(skeletonData.wrappee) else {
-            throw "Could not load native skeleton drawable"
+            throw SpineError("Could not load native skeleton drawable")
         }
         skeletonDrawable = SkeletonDrawable(nativeSkeletonDrawable)
         
         guard let nativeSkeleton = spine_skeleton_drawable_get_skeleton(skeletonDrawable.wrappee) else {
-            throw "Could not load native skeleton"
+            throw SpineError("Could not load native skeleton")
         }
         skeleton = Skeleton(nativeSkeleton)
         
         guard let nativeAnimationStateData = spine_skeleton_drawable_get_animation_state_data(skeletonDrawable.wrappee) else {
-            throw "Could not load native animation state data"
+            throw SpineError("Could not load native animation state data")
         }
         animationStateData = AnimationStateData(nativeAnimationStateData)
         
         guard let nativeAnimationState = spine_skeleton_drawable_get_animation_state(skeletonDrawable.wrappee) else {
-            throw "Could not load native animation state"
+            throw SpineError("Could not load native animation state")
         }
         animationState = AnimationState(nativeAnimationState)
         animationStateWrapper = AnimationStateWrapper(

@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 import { Animation, MixBlend, AttachmentTimeline, MixDirection, RotateTimeline, DrawOrderTimeline, Timeline, EventTimeline } from "./Animation.js";
@@ -138,18 +138,16 @@ export class AnimationState {
 		from.animationLast = from.nextAnimationLast;
 		from.trackLast = from.nextTrackLast;
 
-		if (to.nextTrackLast != -1) { // The from entry was applied at least once.
-			const discard = to.mixTime == 0 && from.mixTime == 0; // Discard the from entry when neither have advanced yet.
-			if (to.mixTime >= to.mixDuration || discard) {
-				// Require totalAlpha == 0 to ensure mixing is complete or the transition is a single frame or discarded.
-				if (from.totalAlpha == 0 || to.mixDuration == 0 || discard) {
-					to.mixingFrom = from.mixingFrom;
-					if (from.mixingFrom != null) from.mixingFrom.mixingTo = to;
-					to.interruptAlpha = from.interruptAlpha;
-					this.queue.end(from);
-				}
-				return finished;
+		// The from entry was applied at least once and the mix is complete.
+		if (to.nextTrackLast != -1 && to.mixTime >= to.mixDuration) {
+			// Mixing is complete for all entries before the from entry or the mix is instantaneous.
+			if (from.totalAlpha == 0 || to.mixDuration == 0) {
+				to.mixingFrom = from.mixingFrom;
+				if (from.mixingFrom != null) from.mixingFrom.mixingTo = to;
+				to.interruptAlpha = from.interruptAlpha;
+				this.queue.end(from);
 			}
+			return finished;
 		}
 
 		from.trackTime += delta * from.timeScale;
@@ -588,10 +586,11 @@ export class AnimationState {
 		if (!last) {
 			this.setCurrent(trackIndex, entry, true);
 			this.queue.drain();
+			if (delay < 0) delay = 0;
 		} else {
 			last.next = entry;
 			entry.previous = last;
-			if (delay <= 0) delay += last.getTrackComplete() - entry.mixDuration;
+			if (delay <= 0) delay = Math.max(delay + last.getTrackComplete() - entry.mixDuration, 0);
 		}
 
 		entry.delay = delay;
@@ -632,7 +631,7 @@ export class AnimationState {
 	 *         after the {@link AnimationStateListener#dispose()} event occurs. */
 	addEmptyAnimation (trackIndex: number, mixDuration: number = 0, delay: number = 0) {
 		let entry = this.addAnimationWith(trackIndex, AnimationState.emptyAnimation(), false, delay);
-		if (delay <= 0) entry.delay += entry.mixDuration - mixDuration;
+		if (delay <= 0) entry.delay = Math.max(entry.delay + entry.mixDuration - mixDuration, 0);
 		entry.mixDuration = mixDuration;
 		entry.trackEnd = mixDuration;
 		return entry;
@@ -957,7 +956,12 @@ export class TrackEntry {
 
 	setMixDurationWithDelay (mixDuration: number, delay: number) {
 		this._mixDuration = mixDuration;
-		if (this.previous != null && delay <= 0) delay += this.previous.getTrackComplete() - mixDuration;
+		if (delay <= 0) {
+			if (this.previous != null)
+				delay = Math.max(delay + this.previous.getTrackComplete() - mixDuration, 0);
+			else
+				delay = 0;
+		}
 		this.delay = delay;
 	}
 
@@ -1089,11 +1093,11 @@ export class EventQueue {
 		this.drainDisabled = true;
 
 		let objects = this.objects;
-		let listeners = this.animState.listeners;
 
 		for (let i = 0; i < objects.length; i += 2) {
 			let type = objects[i] as EventType;
 			let entry = objects[i + 1] as TrackEntry;
+			let listeners = this.animState.listeners.slice();
 			switch (type) {
 				case EventType.start:
 					if (entry.listener && entry.listener.start) entry.listener.start(entry);

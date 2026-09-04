@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,10 +23,9 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
-
 
 #include "SpineCommon.h"
 #ifndef SPINE_GODOT_EXTENSION
@@ -89,6 +88,12 @@ void initialize_spine_godot_module(ModuleInitializationLevel level) {
 		EditorPlugins::add_plugin_class(StringName("SpineEditorPlugin"));
 #endif
 	}
+	if (level == MODULE_INITIALIZATION_LEVEL_CORE) {
+		GDREGISTER_CLASS(SpineAtlasResourceFormatLoader);
+		GDREGISTER_CLASS(SpineAtlasResourceFormatSaver);
+		GDREGISTER_CLASS(SpineSkeletonFileResourceFormatLoader);
+		GDREGISTER_CLASS(SpineSkeletonFileResourceFormatSaver);
+	}
 	if (level != MODULE_INITIALIZATION_LEVEL_SCENE) return;
 #else
 #if VERSION_MAJOR > 3
@@ -111,10 +116,12 @@ void register_spine_godot_types() {
 #endif
 	spine::Bone::setYDown(true);
 
+#ifndef SPINE_GODOT_EXTENSION
 	GDREGISTER_CLASS(SpineAtlasResourceFormatLoader);
 	GDREGISTER_CLASS(SpineAtlasResourceFormatSaver);
 	GDREGISTER_CLASS(SpineSkeletonFileResourceFormatLoader);
 	GDREGISTER_CLASS(SpineSkeletonFileResourceFormatSaver);
+#endif
 
 	GDREGISTER_CLASS(SpineObjectWrapper);
 	GDREGISTER_CLASS(SpineAtlasResource);
@@ -224,7 +231,7 @@ extern "C" GDExtensionBool GDE_EXPORT spine_godot_library_init(GDExtensionInterf
 	GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
 	init_obj.register_initializer(initialize_spine_godot_module);
 	init_obj.register_terminator(uninitialize_spine_godot_module);
-	init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_SCENE);
+	init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_CORE);
 	return init_obj.init();
 }
 #endif

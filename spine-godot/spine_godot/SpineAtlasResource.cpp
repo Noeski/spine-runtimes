@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #include "SpineAtlasResource.h"
@@ -51,7 +51,11 @@
 #ifdef SPINE_GODOT_EXTENSION
 #include <godot_cpp/classes/editor_file_system.hpp>
 #else
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+#include "editor/file_system/editor_file_system.h"
+#else
 #include "editor/editor_file_system.h"
+#endif
 #endif
 #endif
 
@@ -61,11 +65,12 @@ class GodotSpineTextureLoader : public spine::TextureLoader {
 
 	Array *textures;
 	Array *normal_maps;
+	Array *specular_maps;
 	String normal_map_prefix;
-	bool is_importing;
+	String specular_map_prefix;
 
 public:
-	GodotSpineTextureLoader(Array *_textures, Array *_normal_maps, const String &normal_map_prefix, bool is_importing) : textures(_textures), normal_maps(_normal_maps), normal_map_prefix(normal_map_prefix), is_importing(is_importing) {
+	GodotSpineTextureLoader(Array *_textures, Array *_normal_maps, Array *_specular_maps, const String &normal_map_prefix, const String &specular_map_prefix, bool is_importing) : textures(_textures), normal_maps(_normal_maps), specular_maps(_specular_maps), normal_map_prefix(normal_map_prefix), specular_map_prefix(specular_map_prefix) {
 	}
 
 	static bool fix_path(String &path) {
@@ -141,26 +146,27 @@ public:
 	}
 
 	void load(spine::AtlasPage &page, const spine::String &path) override {
-		Error error = OK;
-		String fixed_path = String(path.buffer());
+		String fixed_path;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+		fixed_path = String::utf8(path.buffer());
+#else
+		fixed_path.parse_utf8(path.buffer());
+#endif
 		bool is_resource = fix_path(fixed_path);
 
 		import_image_resource(fixed_path);
 
-#if SPINE_GODOT_EXTENSION
-		Ref<Texture2D> texture = ResourceLoader::get_singleton()->load(fixed_path, "", ResourceLoader::CACHE_MODE_REUSE);
-#else
 #if VERSION_MAJOR > 3
 		Ref<Texture2D> texture = get_texture_from_image(fixed_path, is_resource);
 #else
 		Ref<Texture> texture = get_texture_from_image(fixed_path, is_resource);
 #endif
-#endif
-		if (error != OK || !texture.is_valid()) {
-			ERR_PRINT(vformat("Can't load texture: \"%s\"", String(path.buffer())));
+		if (!texture.is_valid()) {
+			ERR_PRINT(vformat("Can't load texture: \"%s\"", fixed_path));
 			auto renderer_object = memnew(SpineRendererObject);
 			renderer_object->texture = Ref<Texture>(nullptr);
 			renderer_object->normal_map = Ref<Texture>(nullptr);
+			renderer_object->specular_map = Ref<Texture>(nullptr);
 			page.texture = (void *) renderer_object;
 			return;
 		}
@@ -169,20 +175,39 @@ public:
 		auto renderer_object = memnew(SpineRendererObject);
 		renderer_object->texture = texture;
 		renderer_object->normal_map = Ref<Texture>(nullptr);
+		renderer_object->specular_map = Ref<Texture>(nullptr);
 
-		String new_path = vformat("%s/%s_%s", fixed_path.get_base_dir(), normal_map_prefix, fixed_path.get_file());
+		String normal_map_path = vformat("%s/%s_%s", fixed_path.get_base_dir(), normal_map_prefix, fixed_path.get_file());
+		String specular_map_path = vformat("%s/%s_%s", fixed_path.get_base_dir(), specular_map_prefix, fixed_path.get_file());
+		is_resource = fix_path(normal_map_path);
+		is_resource = fix_path(specular_map_path);
 #if SPINE_GODOT_EXTENSION
-		if (ResourceLoader::get_singleton()->exists(new_path)) {
-			Ref<Texture> normal_map = ResourceLoader::get_singleton()->load(new_path);
+		if (ResourceLoader::get_singleton()->exists(normal_map_path)) {
+			import_image_resource(normal_map_path);
+			Ref<Texture> normal_map = get_texture_from_image(normal_map_path, is_resource);
 			normal_maps->append(normal_map);
 			renderer_object->normal_map = normal_map;
 		}
+
+		if (ResourceLoader::get_singleton()->exists(specular_map_path)) {
+			import_image_resource(specular_map_path);
+			Ref<Texture> specular_map = get_texture_from_image(specular_map_path, is_resource);
+			specular_maps->append(specular_map);
+			renderer_object->specular_map = specular_map;
+		}
 #else
-		if (ResourceLoader::exists(new_path)) {
-			import_image_resource(new_path);
-			Ref<Texture> normal_map = get_texture_from_image(new_path, is_resource);
+		if (ResourceLoader::exists(normal_map_path)) {
+			import_image_resource(normal_map_path);
+			Ref<Texture> normal_map = get_texture_from_image(normal_map_path, is_resource);
 			normal_maps->append(normal_map);
 			renderer_object->normal_map = normal_map;
+		}
+
+		if (ResourceLoader::exists(specular_map_path)) {
+			import_image_resource(specular_map_path);
+			Ref<Texture> specular_map = get_texture_from_image(specular_map_path, is_resource);
+			specular_maps->append(specular_map);
+			renderer_object->specular_map = specular_map;
 		}
 #endif
 
@@ -190,6 +215,7 @@ public:
 		renderer_object->canvas_texture.instantiate();
 		renderer_object->canvas_texture->set_diffuse_texture(renderer_object->texture);
 		renderer_object->canvas_texture->set_normal_texture(renderer_object->normal_map);
+		renderer_object->canvas_texture->set_specular_texture(renderer_object->specular_map);
 #endif
 
 		page.texture = (void *) renderer_object;
@@ -201,6 +227,7 @@ public:
 		auto renderer_object = (SpineRendererObject *) data;
 		if (renderer_object->texture.is_valid()) renderer_object->texture.unref();
 		if (renderer_object->normal_map.is_valid()) renderer_object->normal_map.unref();
+		if (renderer_object->specular_map.is_valid()) renderer_object->specular_map.unref();
 #if VERSION_MAJOR > 3
 		if (renderer_object->canvas_texture.is_valid()) renderer_object->canvas_texture.unref();
 #endif
@@ -213,15 +240,15 @@ void SpineAtlasResource::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_source_path"), &SpineAtlasResource::get_source_path);
 	ClassDB::bind_method(D_METHOD("get_textures"), &SpineAtlasResource::get_textures);
 	ClassDB::bind_method(D_METHOD("get_normal_maps"), &SpineAtlasResource::get_normal_maps);
+	ClassDB::bind_method(D_METHOD("get_specular_maps"), &SpineAtlasResource::get_specular_maps);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "source_path"), "", "get_source_path");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "textures"), "", "get_textures");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "normal_maps"), "", "get_normal_maps");
-
-	ADD_SIGNAL(MethodInfo("skeleton_atlas_changed"));
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "specular_maps"), "", "get_specular_maps");
 }
 
-SpineAtlasResource::SpineAtlasResource() : atlas(nullptr), texture_loader(nullptr), normal_map_prefix("n") {
+SpineAtlasResource::SpineAtlasResource() : atlas(nullptr), texture_loader(nullptr), normal_map_prefix("n"), specular_map_prefix("s") {
 }
 
 SpineAtlasResource::~SpineAtlasResource() {
@@ -236,6 +263,7 @@ void SpineAtlasResource::clear() {
 	texture_loader = nullptr;
 	textures.clear();
 	normal_maps.clear();
+	specular_maps.clear();
 }
 
 Array SpineAtlasResource::get_textures() {
@@ -244,6 +272,10 @@ Array SpineAtlasResource::get_textures() {
 
 Array SpineAtlasResource::get_normal_maps() {
 	return normal_maps;
+}
+
+Array SpineAtlasResource::get_specular_maps() {
+	return specular_maps;
 }
 
 String SpineAtlasResource::get_source_path() {
@@ -266,9 +298,10 @@ Error SpineAtlasResource::load_from_atlas_file_internal(const String &path, bool
 #endif
 
 	clear();
-	texture_loader = new GodotSpineTextureLoader(&textures, &normal_maps, normal_map_prefix, is_importing);
+	texture_loader = new GodotSpineTextureLoader(&textures, &normal_maps, &specular_maps, normal_map_prefix, specular_map_prefix, is_importing);
 	auto atlas_utf8 = atlas_data.utf8();
-	atlas = new spine::Atlas(atlas_utf8, atlas_utf8.length(), source_path.get_base_dir().utf8(), texture_loader);
+	auto dir_utf8 = source_path.get_base_dir().utf8();
+	atlas = new spine::Atlas(atlas_utf8.ptr(), atlas_utf8.length(), dir_utf8.ptr(), texture_loader);
 	if (atlas) return OK;
 
 	clear();
@@ -306,11 +339,13 @@ Error SpineAtlasResource::load_from_file(const String &path) {
 	source_path = content["source_path"];
 	atlas_data = content["atlas_data"];
 	normal_map_prefix = content["normal_texture_prefix"];
+	specular_map_prefix = content["specular_texture_prefix"];
 
 	clear();
-	texture_loader = new GodotSpineTextureLoader(&textures, &normal_maps, normal_map_prefix, false);
+	texture_loader = new GodotSpineTextureLoader(&textures, &normal_maps, &specular_maps, normal_map_prefix, specular_map_prefix, false);
 	auto utf8 = atlas_data.utf8();
-	atlas = new spine::Atlas(utf8.ptr(), utf8.size(), source_path.get_base_dir().utf8(), texture_loader);
+	auto dir_utf8 = source_path.get_base_dir().utf8();
+	atlas = new spine::Atlas(utf8.ptr(), utf8.size(), dir_utf8.ptr(), texture_loader);
 	if (atlas) return OK;
 
 	clear();
@@ -339,6 +374,7 @@ Error SpineAtlasResource::save_to_file(const String &path) {
 	content["source_path"] = source_path;
 	content["atlas_data"] = atlas_data;
 	content["normal_texture_prefix"] = normal_map_prefix;
+	content["specular_texture_prefix"] = specular_map_prefix;
 #if VERSION_MAJOR > 3
 	JSON *json = memnew(JSON);
 	file->store_string(json->stringify(content));
@@ -366,8 +402,10 @@ Error SpineAtlasResource::copy_from(const Ref<Resource> &p_resource) {
 	this->source_path = spineAtlas->source_path;
 	this->atlas_data = spineAtlas->atlas_data;
 	this->normal_map_prefix = spineAtlas->normal_map_prefix;
+	this->specular_map_prefix = spineAtlas->specular_map_prefix;
 	this->textures = spineAtlas->textures;
 	this->normal_maps = spineAtlas->normal_maps;
+	this->specular_maps = spineAtlas->specular_maps;
 	emit_signal(SNAME("skeleton_file_changed"));
 
 	return OK;

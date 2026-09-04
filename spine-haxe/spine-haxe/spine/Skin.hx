@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,9 +23,9 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*****************************************************************************/
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package spine;
 
@@ -33,7 +33,10 @@ import haxe.ds.StringMap;
 import spine.attachments.Attachment;
 import spine.attachments.MeshAttachment;
 
-/** Stores attachments by slot index and attachment name. */
+/** Stores attachments by slot index and attachment name.
+ * 
+ * See spine.SkeletonData.defaultSkin, spine.Skeleton.skin, and
+ * Runtime skins at https://esotericsoftware.com/spine-runtime-skins in the Spine Runtimes Guide. */
 class Skin {
 	private var _name:String;
 	private var _attachments:Array<StringMap<Attachment>> = new Array<StringMap<Attachment>>();
@@ -47,6 +50,7 @@ class Skin {
 		_name = name;
 	}
 
+	/** Adds an attachment to the skin for the specified slot index and name. */
 	public function setAttachment(slotIndex:Int, name:String, attachment:Attachment):Void {
 		if (attachment == null)
 			throw new SpineException("attachment cannot be null.");
@@ -57,6 +61,7 @@ class Skin {
 		_attachments[slotIndex].set(name, attachment);
 	}
 
+	/** Adds all attachments, bones, and constraints from the specified skin to this skin. */
 	public function addSkin(skin:Skin):Void {
 		var contained:Bool = false;
 		for (i in 0...skin.bones.length) {
@@ -92,6 +97,8 @@ class Skin {
 		}
 	}
 
+	/** Adds all bones and constraints and copies of all attachments from the specified skin to this skin. Mesh attachments are not
+	 * copied, instead a new linked mesh is created. The attachment copies can be modified without affecting the originals. */
 	public function copySkin(skin:Skin):Void {
 		var contained:Bool = false;
 		var attachment:SkinEntry;
@@ -138,6 +145,7 @@ class Skin {
 		}
 	}
 
+	/** Returns the attachment for the specified slot index and name, or null. */
 	public function getAttachment(slotIndex:Int, name:String):Attachment {
 		if (slotIndex >= _attachments.length)
 			return null;
@@ -145,12 +153,14 @@ class Skin {
 		return dictionary != null ? dictionary.get(name) : null;
 	}
 
+	/** Removes the attachment in the skin for the specified slot index and name, if any. */
 	public function removeAttachment(slotIndex:Int, name:String):Void {
 		var dictionary:StringMap<Attachment> = _attachments[slotIndex];
 		if (dictionary != null)
 			dictionary.remove(name);
 	}
 
+	/** Returns all attachments in this skin. */
 	public function getAttachments():Array<SkinEntry> {
 		var entries:Array<SkinEntry> = new Array<SkinEntry>();
 		for (slotIndex in 0..._attachments.length) {
@@ -166,6 +176,7 @@ class Skin {
 		return entries;
 	}
 
+	/** Returns all attachments in this skin for the specified slot index. */
 	public function getAttachmentsForSlot(slotIndex:Int):Array<SkinEntry> {
 		var entries:Array<SkinEntry> = new Array<SkinEntry>();
 		var attachments:StringMap<Attachment> = _attachments[slotIndex];
@@ -179,6 +190,7 @@ class Skin {
 		return entries;
 	}
 
+	/** Clears all attachments, bones, and constraints. */
 	public function clear():Void {
 		_attachments.resize(0);
 		_bones.resize(0);
@@ -203,12 +215,14 @@ class Skin {
 		return _constraints;
 	}
 
+	/** The skin's name, which is unique across all skins in the skeleton. */
 	public var name(get, never):String;
 
 	private function get_name():String {
 		return _name;
 	}
 
+	/** The color of the skin as it was in Spine, or a default color if nonessential data was not exported. */
 	public var color(get, never):Color;
 
 	private function get_color():Color {
@@ -228,13 +242,15 @@ class Skin {
 			var slotAttachment:Attachment = slot.attachment;
 			if (slotAttachment != null && slotIndex < oldSkin.attachments.length) {
 				var dictionary:StringMap<Attachment> = oldSkin.attachments[slotIndex];
-				for (name in dictionary.keys()) {
-					var skinAttachment:Attachment = dictionary.get(name);
-					if (slotAttachment == skinAttachment) {
-						var attachment:Attachment = getAttachment(slotIndex, name);
-						if (attachment != null)
-							slot.attachment = attachment;
-						break;
+				if (null != dictionary) {
+					for (name in dictionary.keys()) {
+						var skinAttachment:Attachment = dictionary.get(name);
+						if (slotAttachment == skinAttachment) {
+							var attachment:Attachment = getAttachment(slotIndex, name);
+							if (attachment != null)
+								slot.attachment = attachment;
+							break;
+						}
 					}
 				}
 			}

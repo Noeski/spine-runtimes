@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #pragma warning disable 0219
@@ -140,12 +140,15 @@ namespace Spine.Unity.Editor {
 				}
 			}
 
+			const string APPLY_ADDITIVE_MATERIAL_KEY = "SPINE_APPLY_ADDITIVE_MATERIAL";
 			const string BLEND_MODE_MATERIAL_MULTIPLY_KEY = "SPINE_BLENDMODE_MATERIAL_MULTIPLY";
 			const string BLEND_MODE_MATERIAL_SCREEN_KEY = "SPINE_BLENDMODE_MATERIAL_SCREEN";
 			const string BLEND_MODE_MATERIAL_ADDITIVE_KEY = "SPINE_BLENDMODE_MATERIAL_ADDITIVE";
+			public static bool applyAdditiveMaterial = false;
 			public static string blendModeMaterialMultiply = "";
 			public static string blendModeMaterialScreen = "";
 			public static string blendModeMaterialAdditive = "";
+			public const bool DEFAULT_APPLY_ADDITIVE_MATERIAL = SpinePreferences.DEFAULT_APPLY_ADDITIVE_MATERIAL;
 			public const string DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL = SpinePreferences.DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL;
 			public const string DEFAULT_BLEND_MODE_SCREEN_MATERIAL = SpinePreferences.DEFAULT_BLEND_MODE_SCREEN_MATERIAL;
 			public const string DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL = SpinePreferences.DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL;
@@ -207,6 +210,7 @@ namespace Spine.Unity.Editor {
 				reloadAfterPlayMode = EditorPrefs.GetBool(RELOAD_AFTER_PLAYMODE_KEY, SpinePreferences.DEFAULT_RELOAD_AFTER_PLAYMODE);
 				setTextureImporterSettings = EditorPrefs.GetBool(SET_TEXTUREIMPORTER_SETTINGS_KEY, SpinePreferences.DEFAULT_SET_TEXTUREIMPORTER_SETTINGS);
 				textureSettingsReference = EditorPrefs.GetString(TEXTURE_SETTINGS_REFERENCE_KEY, SpinePreferences.DEFAULT_TEXTURE_SETTINGS_REFERENCE);
+				applyAdditiveMaterial = EditorPrefs.GetBool(APPLY_ADDITIVE_MATERIAL_KEY, SpinePreferences.DEFAULT_APPLY_ADDITIVE_MATERIAL);
 				blendModeMaterialMultiply = EditorPrefs.GetString(BLEND_MODE_MATERIAL_MULTIPLY_KEY, "");
 				blendModeMaterialScreen = EditorPrefs.GetString(BLEND_MODE_MATERIAL_SCREEN_KEY, "");
 				blendModeMaterialAdditive = EditorPrefs.GetString(BLEND_MODE_MATERIAL_ADDITIVE_KEY, "");
@@ -313,6 +317,7 @@ namespace Spine.Unity.Editor {
 						}
 					}
 
+					SpineEditorUtilities.BoolPrefsField(ref applyAdditiveMaterial, APPLY_ADDITIVE_MATERIAL_KEY, new GUIContent("Apply Additive Material", "The Default Apply Additive Material setting for newly imported SkeletonDataAssets."));
 					SpineEditorUtilities.MaterialPrefsField(ref blendModeMaterialAdditive, BLEND_MODE_MATERIAL_ADDITIVE_KEY, new GUIContent("Additive Material", "Additive blend mode Material template."));
 					if (string.IsNullOrEmpty(blendModeMaterialAdditive)) {
 						string[] blendModeMaterialAdditiveGUIDS = AssetDatabase.FindAssets(DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL);

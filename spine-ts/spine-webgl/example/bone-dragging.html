@@ -24,17 +24,17 @@
             }
 
             loadAssets(canvas) {
-                canvas.assetManager.loadBinary("assets/stretchyman-pro.skel");
-                canvas.assetManager.loadTextureAtlas("assets/stretchyman-pma.atlas");
+                canvas.assetManager.loadBinary("/assets/stretchyman-pro.skel");
+                canvas.assetManager.loadTextureAtlas("/assets/stretchyman-pma.atlas");
             }
 
             initialize(canvas) {
                 let assetManager = canvas.assetManager;
-                var atlas = assetManager.require("assets/stretchyman-pma.atlas");
+                var atlas = assetManager.require("/assets/stretchyman-pma.atlas");
                 var atlasLoader = new spine.AtlasAttachmentLoader(atlas);
                 var skeletonBinary = new spine.SkeletonBinary(atlasLoader);
                 skeletonBinary.scale = 1;
-                var skeletonData = skeletonBinary.readSkeletonData(assetManager.require("assets/stretchyman-pro.skel"));
+                var skeletonData = skeletonBinary.readSkeletonData(assetManager.require("/assets/stretchyman-pro.skel"));
                 this.skeleton = new spine.Skeleton(skeletonData);
                 var animationStateData = new spine.AnimationStateData(skeletonData);
                 this.animationState = new spine.AnimationState(animationStateData);

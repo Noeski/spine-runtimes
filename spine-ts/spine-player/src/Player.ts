@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 import { Animation, AnimationState, AnimationStateData, AtlasAttachmentLoader, Bone, Color, Disposable, Downloader, MathUtils, MixBlend, MixDirection, Physics, Skeleton, SkeletonBinary, SkeletonData, SkeletonJson, StringMap, TextureAtlas, TextureFilter, TimeKeeper, TrackEntry, Vector2 } from "@esotericsoftware/spine-core"
@@ -148,6 +148,9 @@ export interface SpinePlayerConfig {
 	   filter settings from the texture atlas are used. Default: true */
 	mipmaps?: boolean
 
+	/* Optional: Whether the player responds to user click/touch (play/pause, or control bones). Default: true */
+	interactive?: boolean
+
 	/* Optional: List of bone names that the user can drag to position. Default: none */
 	controlBones?: string[]
 
@@ -233,6 +236,7 @@ export class SpinePlayer implements Disposable {
 	private previousViewport: Viewport = {} as Viewport;
 	private viewportTransitionStart = 0;
 	private eventListeners: Array<{ target: any, event: any, func: any }> = [];
+	private input?: Input;
 
 	constructor (parent: HTMLElement | string, private config: SpinePlayerConfig) {
 		let parentDom = typeof parent === "string" ? document.getElementById(parent) : parent;
@@ -276,9 +280,15 @@ export class SpinePlayer implements Disposable {
 		this.sceneRenderer?.dispose();
 		this.loadingScreen?.dispose();
 		this.assetManager?.dispose();
+		this.context?.dispose();
 		for (var i = 0; i < this.eventListeners.length; i++) {
 			var eventListener = this.eventListeners[i];
 			eventListener.target.removeEventListener(eventListener.event, eventListener.func);
+		}
+		this.input?.dispose();
+		if (this.canvas) {
+			this.canvas.width = 0;
+			this.canvas.height = 0;
 		}
 		this.parent.removeChild(this.dom);
 		this.disposed = true;
@@ -306,6 +316,7 @@ export class SpinePlayer implements Disposable {
 		if (config.premultipliedAlpha === void 0) config.premultipliedAlpha = true;
 		if (config.preserveDrawingBuffer === void 0) config.preserveDrawingBuffer = false;
 		if (config.mipmaps === void 0) config.mipmaps = true;
+		if (config.interactive === void 0) config.interactive = true;
 		if (!config.debug) config.debug = {
 			bones: false,
 			clipping: false,
@@ -347,7 +358,7 @@ export class SpinePlayer implements Disposable {
 			this.sceneRenderer = new SceneRenderer(this.canvas, this.context, true);
 			if (config.showLoading) this.loadingScreen = new LoadingScreen(this.sceneRenderer);
 		} catch (e) {
-			this.showError("Sorry, your browser does not support WebG, or you have disabled WebGL in your browser settings.\nPlease use the latest version of Firefox, Chrome, Edge, or Safari.", e as any);
+			this.showError("Sorry, your browser does not support WebGL, or you have disabled WebGL in your browser settings.\nPlease use the latest version of Firefox, Chrome, Edge, or Safari.", e as any);
 			return null;
 		}
 
@@ -561,8 +572,13 @@ export class SpinePlayer implements Disposable {
 				this.setViewport(entry.animation!);
 				this.pause();
 			}
-		} else if (!this.currentViewport) {
-			this.setViewport(entry.animation!);
+		} else {
+			if (this.currentViewport.x === undefined) {
+				this.setViewport(entry.animation!);
+			}
+			if (!config.animation) {
+				config.animation = entry.animation?.name
+			}
 			this.play();
 		}
 	}
@@ -581,57 +597,61 @@ export class SpinePlayer implements Disposable {
 		let skeleton = this.skeleton!;
 		let renderer = this.sceneRenderer!;
 
-		let closest = function (x: number, y: number): Bone | null {
-			mouse.set(x, canvas.clientHeight - y, 0)
-			offset.x = offset.y = 0;
-			let bestDistance = 24, index = 0;
-			let best: Bone | null = null;
-			for (let i = 0; i < controlBones.length; i++) {
-				selectedBones[i] = null;
-				let bone = skeleton.findBone(controlBones[i]);
-				if (!bone) continue;
-				let distance = renderer.camera.worldToScreen(
-					coords.set(bone.worldX, bone.worldY, 0),
-					canvas.clientWidth, canvas.clientHeight).distance(mouse);
-				if (distance < bestDistance) {
-					bestDistance = distance;
-					best = bone;
-					index = i;
-					offset.x = coords.x - mouse.x;
-					offset.y = coords.y - mouse.y;
-				}
-			}
-			if (best) selectedBones[index] = best;
-			return best;
-		};
-
-		new Input(canvas).addListener({
-			down: (x, y) => {
-				target = closest(x, y);
-			},
-			up: () => {
-				if (target)
-					target = null;
-				else if (config.showControls)
-					(this.paused ? this.play() : this.pause());
-			},
-			dragged: (x, y) => {
-				if (target) {
-					x = MathUtils.clamp(x + offset.x, 0, canvas.clientWidth)
-					y = MathUtils.clamp(y - offset.y, 0, canvas.clientHeight);
-					renderer.camera.screenToWorld(coords.set(x, y, 0), canvas.clientWidth, canvas.clientHeight);
-					if (target.parent) {
-						target.parent.worldToLocal(position.set(coords.x - skeleton.x, coords.y - skeleton.y));
-						target.x = position.x;
-						target.y = position.y;
-					} else {
-						target.x = coords.x - skeleton.x;
-						target.y = coords.y - skeleton.y;
+		if (config.interactive) {
+			let closest = function (x: number, y: number): Bone | null {
+				mouse.set(x, canvas.clientHeight - y, 0)
+				offset.x = offset.y = 0;
+				let bestDistance = 24, index = 0;
+				let best: Bone | null = null;
+				for (let i = 0; i < controlBones.length; i++) {
+					selectedBones[i] = null;
+					let bone = skeleton.findBone(controlBones[i]);
+					if (!bone) continue;
+					let distance = renderer.camera.worldToScreen(
+						coords.set(bone.worldX, bone.worldY, 0),
+						canvas.clientWidth, canvas.clientHeight).distance(mouse);
+					if (distance < bestDistance) {
+						bestDistance = distance;
+						best = bone;
+						index = i;
+						offset.x = coords.x - mouse.x;
+						offset.y = coords.y - mouse.y;
 					}
 				}
-			},
-			moved: (x, y) => closest(x, y)
-		});
+				if (best) selectedBones[index] = best;
+				return best;
+			};
+
+			this.input = new Input(canvas);
+			this.input.addListener({
+				down: (x, y) => {
+					target = closest(x, y);
+				},
+				up: () => {
+					if (target)
+						target = null;
+					else if (config.showControls)
+						(this.paused ? this.play() : this.pause());
+				},
+				dragged: (x, y) => {
+					if (target) {
+						x = MathUtils.clamp(x + offset.x, 0, canvas.clientWidth)
+						y = MathUtils.clamp(y - offset.y, 0, canvas.clientHeight);
+						renderer.camera.screenToWorld(coords.set(x, y, 0), canvas.clientWidth, canvas.clientHeight);
+						if (target.parent) {
+							target.parent.worldToLocal(position.set(coords.x - skeleton.x, coords.y - skeleton.y));
+							target.x = position.x;
+							target.y = position.y;
+						} else {
+							target.x = coords.x - skeleton.x;
+							target.y = coords.y - skeleton.y;
+						}
+					}
+				},
+				moved: (x, y) => closest(x, y)
+			});
+		}
+
 
 		if (config.showControls) {
 			// For manual hover to work, we need to disable hidding controls if the mouse/touch entered the clickable area of a child of the controls.
@@ -788,19 +808,21 @@ export class SpinePlayer implements Disposable {
 			this.skeleton!.updateWorldTransform(Physics.update);
 			this.skeleton!.getBounds(offset, size, tempArray, this.sceneRenderer!.skeletonRenderer.getSkeletonClipping());
 
-			if (!isNaN(offset.x) && !isNaN(offset.y) && !isNaN(size.x) && !isNaN(size.y)) {
+			if (Number.isFinite(offset.x) && Number.isFinite(offset.y) && Number.isFinite(size.x) && Number.isFinite(size.y)) {
 				minX = Math.min(offset.x, minX);
 				maxX = Math.max(offset.x + size.x, maxX);
 				minY = Math.min(offset.y, minY);
 				maxY = Math.max(offset.y + size.y, maxY);
-			} else
-				this.showError("Animation bounds are invalid: " + animation.name);
+			}
 		}
 
 		viewport.x = minX;
 		viewport.y = minY;
 		viewport.width = maxX - minX;
 		viewport.height = maxY - minY;
+
+		if (!Number.isFinite(viewport.width) || !Number.isFinite(viewport.height) || viewport.width <= 0 || viewport.height <= 0)
+			this.showError("Animation bounds are invalid: " + animation.name);
 	}
 
 	private drawFrame (requestNextFrame = true) {

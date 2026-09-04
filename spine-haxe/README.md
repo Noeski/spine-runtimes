@@ -2,7 +2,7 @@
 
 The spine-haxe runtime provides functionality to load, manipulate and render [Spine](http://esotericsoftware.com) skeletal animation data using [Haxe](https://haxe.org/) in combination with [OpenFL](https://www.openfl.org/) and [Lime](https://lime.openfl.org/).
 
-For documentation of the core API in `spine-core`, please refer to our [Spine Runtimes Guide](http://esotericsoftware.com/spine-runtimes-guide).
+For documentation of the core API, please refer to our [Spine Runtimes Guide](http://esotericsoftware.com/spine-runtimes-guide).
 
 For documentation of `spine-haxe`, please refer to our [spine-haxe Guide](https://esotericsoftware.com/spine-haxe).
 
@@ -23,12 +23,17 @@ spine-haxe works with data exported from Spine 4.2.xx.
 spine-haxe supports all Spine features except premultiplied alpha atlases and two color tinting.
 
 ## Setup
-The core module of spine-haxe has zero dependencies. The rendering implementation through Starling has two dependencies: openfl and starling.
+The spine-haxe runtime is composed of a core module, that is a Haxe implementation of the renderer-agnostic Spine Runtimes core APIs, and the following specific renderer implementations:
+ - [Starling](https://lib.haxe.org/p/starling/)
+ - [HaxeFlixel](https://lib.haxe.org/p/flixel/) (minimum supported version 5.9.0)
+
+The core module of spine-haxe has zero dependencies. The rendering implementation depends on: openfl, starling, and flixel.
 To use spine-haxe you have first to install all the necessary dependencies:
 
 ```
 haxelib install openfl
 haxelib install starling
+haxelib install flixel
 ```
 
 Once you have installed the dependencies, you can [download the latest version of spine-haxe](https://esotericsoftware.com/files/spine-haxe/4.2/spine-haxe-latest.zip) and install it:
@@ -60,6 +65,7 @@ To setup the development environment install the following:
    haxelib install openfl
    haxelib run openfl setup
    haxelib install starling
+   haxelib install flixel
    ```
 3. Clone the `spine-runtimes` repository, and use `haxelib` to setup a dev library:
    ```

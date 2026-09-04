@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #pragma once
@@ -44,8 +44,13 @@
 #include <godot_cpp/classes/editor_property.hpp>
 #else
 #include "editor/editor_node.h"
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+#include "editor/inspector/editor_properties.h"
+#include "editor/inspector/editor_properties_array_dict.h"
+#else
 #include "editor/editor_properties.h"
 #include "editor/editor_properties_array_dict.h"
+#endif
 #endif
 
 class SpineAtlasResourceImportPlugin : public EditorImportPlugin {
@@ -107,8 +112,11 @@ public:
 	void get_import_options(const String &path, List<ImportOption> *options, int preset) const override;
 
 	virtual bool get_option_visibility(const String &path, const String &option, const HashMap<StringName, Variant> &options) const override { return true; }
-
+#if VERSION_MINOR > 3
+	Error import(ResourceUID::ID p_source_id, const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata = nullptr) override;
+#else
 	Error import(const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) override;
+#endif
 #endif
 #else
 	void get_import_options(List<ImportOption> *options, int preset) const override;
@@ -182,7 +190,11 @@ public:
 
 	bool get_option_visibility(const String &path, const String &option, const HashMap<StringName, Variant> &options) const override { return true; }
 
+#if VERSION_MINOR > 3
+	Error import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata = nullptr) override;
+#else
 	Error import(const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) override;
+#endif
 #endif
 #else
 	void get_import_options(List<ImportOption> *options, int preset) const override {}
@@ -255,8 +267,11 @@ public:
 	void get_import_options(const String &path, List<ImportOption> *options, int preset) const override {}
 
 	bool get_option_visibility(const String &path, const String &option, const HashMap<StringName, Variant> &options) const override { return true; }
-
+#if VERSION_MINOR > 3
+	Error import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata = nullptr) override;
+#else
 	Error import(const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) override;
+#endif
 #endif
 #else
 	void get_import_options(List<ImportOption> *options, int preset) const override {}
@@ -272,15 +287,28 @@ class SpineEditorPlugin : public EditorPlugin {
 
 	static void _bind_methods() {}
 
+#ifdef SPINE_GODOT_EXTENSION
+	Ref<EditorImportPlugin> atlas_import_plugin;
+	Ref<EditorImportPlugin> json_import_plugin;
+	Ref<EditorImportPlugin> binary_import_plugin;
+	Ref<EditorInspectorPlugin> skeleton_data_inspector_plugin;
+#endif
+
 public:
 #ifdef SPINE_GODOT_EXTENSION
 	explicit SpineEditorPlugin();
 
 	String _get_plugin_name() const override { return "SpineEditorPlugin"; }
+
+	void _notification(int p_what);
 #else
 	explicit SpineEditorPlugin(EditorNode *node);
 
+#if VERSION_MAJOR > 3 && VERSION_MINOR > 3
+	String get_plugin_name() const override { return "SpineEditorPlugin"; }
+#else
 	String get_name() const override { return "SpineEditorPlugin"; }
+#endif
 #endif
 };
 

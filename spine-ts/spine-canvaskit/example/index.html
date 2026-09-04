@@ -42,10 +42,10 @@
     surface.getCanvas().scale(dpr, dpr);
 
     // Load the texture atlas
-    const atlas = await spine.loadTextureAtlas(ck, "assets/spineboy.atlas", readFile);
+    const atlas = await spine.loadTextureAtlas(ck, "/assets/spineboy.atlas", readFile);
 
     // Load skeleton data
-    const skeletonData = await spine.loadSkeletonData("assets/spineboy-pro.skel", atlas, readFile);
+    const skeletonData = await spine.loadSkeletonData("/assets/spineboy-pro.skel", atlas, readFile);
 
     // Create a drawable and scale and position the skeleton
     const drawable = new spine.SkeletonDrawable(skeletonData);

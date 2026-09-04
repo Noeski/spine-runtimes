@@ -4,12 +4,20 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-#include "SpineCoreShaders/Spine-Common.cginc"
-#include "Spine-Common-URP.hlsl"
-#include "SpineCoreShaders/Spine-Skeleton-Tint-Common.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/Spine-Common.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/Spine-Common-URP.hlsl"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/Spine-Skeleton-Tint-Common.cginc"
 
 #if (defined(_MAIN_LIGHT_SHADOWS) || defined(MAIN_LIGHT_CALCULATE_SHADOWS)) && !defined(_RECEIVE_SHADOWS_OFF)
 #define SKELETONLIT_RECEIVE_SHADOWS
+#endif
+
+#if !defined(DYNAMICLIGHTMAP_ON) && !defined(LIGHTMAP_ON) && (defined(PROBE_VOLUMES_L1) || defined(PROBE_VOLUMES_L2)) && defined(__PROBEVOLUME_HLSL__)
+#define USE_ADAPTIVE_PROBE_VOLUMES
+#endif
+
+#if !(defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2))
+#undef _FOG
 #endif
 
 struct appdata {
@@ -26,7 +34,11 @@ struct appdata {
 
 struct VertexOutput {
 	half4 color : COLOR0;
+#if defined(_FOG)
+	float3 uv0AndFog : TEXCOORD0;
+#else
 	float2 uv0 : TEXCOORD0;
+#endif
 	float4 pos : SV_POSITION;
 
 #if defined(SKELETONLIT_RECEIVE_SHADOWS)
@@ -40,8 +52,18 @@ struct VertexOutput {
 #if defined(_TINT_BLACK_ON)
 	float3 darkColor : TEXCOORD5;
 #endif
+#if defined(USE_ADAPTIVE_PROBE_VOLUMES) && defined(_ADAPTIVE_PROBE_VOLUMES_PER_PIXEL)
+	float3 positionCS : TEXCOORD6;
+#endif
 	UNITY_VERTEX_OUTPUT_STEREO
 };
+
+#if defined(_FOG)
+#define PackedUV0(i) i.uv0AndFog.xy
+#define PackedFog(i) i.uv0AndFog.z
+#else
+#define PackedUV0(i) i.uv0.xy
+#endif
 
 half3 ProcessLight(float3 positionWS, half3 normalWS, uint meshRenderingLayers, int lightIndex)
 {
@@ -109,8 +131,13 @@ VertexOutput vert(appdata v) {
 	float3 positionWS = TransformObjectToWorld(v.pos);
 	half3 fixedNormal = half3(0, 0, -1);
 	half3 normalWS = normalize(mul((float3x3)unity_ObjectToWorld, fixedNormal));
-	o.uv0 = v.uv0;
+
 	o.pos = TransformWorldToHClip(positionWS);
+#if defined(_FOG)
+	half fogFactor = ComputeFogFactor(o.pos.z);
+	PackedFog(o) = fogFactor;
+#endif
+	PackedUV0(o) = v.uv0;
 
 #ifdef _DOUBLE_SIDED_LIGHTING
 	// unfortunately we have to compute the sign here in the vertex shader
@@ -147,10 +174,10 @@ VertexOutput vert(appdata v) {
 
 	// Note: ambient light is also handled via SH.
 	half3 vertexSH;
+	float4 ignoredProbeOcclusion;
 #if IS_URP_15_OR_NEWER
 	#ifdef OUTPUT_SH4
 		#if IS_URP_17_OR_NEWER
-			float4 ignoredProbeOcclusion;
 			OUTPUT_SH4(positionWS, normalWS.xyz, GetWorldSpaceNormalizeViewDir(positionWS), vertexSH, ignoredProbeOcclusion);
 		#else // 15 or newer
 			OUTPUT_SH4(positionWS, normalWS.xyz, GetWorldSpaceNormalizeViewDir(positionWS), vertexSH);
@@ -161,7 +188,24 @@ VertexOutput vert(appdata v) {
 #else
 	OUTPUT_SH(normalWS.xyz, vertexSH);
 #endif
-	half3 bakedGI = SAMPLE_GI(v.lightmapUV, vertexSH, normalWS);
+
+#if defined(USE_ADAPTIVE_PROBE_VOLUMES)
+	#if !defined(_ADAPTIVE_PROBE_VOLUMES_PER_PIXEL)
+		half4 shadowMask = 1.0;
+		half3 bakedGI = SAMPLE_GI(vertexSH,
+			GetAbsolutePositionWS(positionWS),
+			normalWS.xyz,
+			GetWorldSpaceNormalizeViewDir(positionWS),
+			o.pos.xy,
+			ignoredProbeOcclusion,
+			shadowMask) * v.color.a;
+	#else // _ADAPTIVE_PROBE_VOLUMES_PER_PIXEL
+		half3 bakedGI = half3(0.0, 0.0, 0.0);
+		o.positionCS = o.pos;
+	#endif
+#else
+	half3 bakedGI = SAMPLE_GI(v.lightmapUV, vertexSH, normalWS) * v.color.a;
+#endif
 	color.rgb += bakedGI;
 	o.color = color;
 
@@ -183,9 +227,24 @@ half4 frag(VertexOutput i
 #endif
 ) : SV_Target0
 {
-	half4 tex = tex2D(_MainTex, i.uv0);
+	half4 tex = tex2D(_MainTex, PackedUV0(i));
 #if !defined(_TINT_BLACK_ON) && defined(_STRAIGHT_ALPHA_INPUT)
 	tex.rgb *= tex.a;
+#endif
+
+#if defined(USE_ADAPTIVE_PROBE_VOLUMES) && defined(_ADAPTIVE_PROBE_VOLUMES_PER_PIXEL)
+	half3 vertexSH;
+	float4 ignoredProbeOcclusion;
+	OUTPUT_SH4(i.positionWS, i.normalWS.xyz, GetWorldSpaceNormalizeViewDir(i.positionWS), vertexSH, ignoredProbeOcclusion);
+	half4 shadowMask = 1.0;
+	half3 bakedGI = SAMPLE_GI(vertexSH,
+		GetAbsolutePositionWS(i.positionWS),
+		i.normalWS.xyz,
+		GetWorldSpaceNormalizeViewDir(i.positionWS),
+		i.positionCS.xy,
+		ignoredProbeOcclusion,
+		shadowMask) * i.color.a;
+	i.color.rgb += bakedGI;
 #endif
 
 	if (i.color.a == 0)	{
@@ -215,12 +274,17 @@ half4 frag(VertexOutput i
 	uint renderingLayers = GetMeshRenderingLayerBackwardsCompatible();
 	outRenderingLayers = float4(EncodeMeshRenderingLayer(renderingLayers), 0, 0, 0);
 #endif
-
+	
 #if defined(_TINT_BLACK_ON)
-	return fragTintedColor(tex, i.darkColor, i.color, _Color.a, _Black.a);
+	half4 pixel = fragTintedColor(tex, i.darkColor, i.color, _Color.a, _Black.a);
 #else
-	return tex * i.color;
+	half4 pixel = tex * i.color;
 #endif
+
+#if defined(_FOG)
+	pixel.rgb = MixFogColor(pixel.rgb, unity_FogColor.rgb * pixel.a, PackedFog(i));
+#endif
+	return pixel;
 }
 
 #endif

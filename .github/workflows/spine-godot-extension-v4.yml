@@ -49,7 +49,7 @@ jobs:
           path: spine-godot/example-v4-extension/bin/windows/*.dll
 
   build-linux-x86_64:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -95,7 +95,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gdextension-macos-${{ env.GODOT_TAG }}
-          path: spine-godot/example-v4-extension/bin/macos/macos.framework/*
+          path: spine-godot/example-v4-extension/bin/macos/**/*
 
   build-ios:
     runs-on: macos-latest
@@ -117,10 +117,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gdextension-ios-${{ env.GODOT_TAG }}
-          path: spine-godot/example-v4-extension/bin/ios/*.xcframework/**/*
+          path: spine-godot/example-v4-extension/bin/ios/**/*
 
   build-android:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
@@ -144,7 +144,7 @@ jobs:
       - name: Install NDK
         run: |
           yes | sudo ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses
-          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;23.2.8568313"
+          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.1.13356709"
 
       - name: Setup python and scons
         uses: ./.github/actions/setup-godot-deps-4
@@ -153,8 +153,8 @@ jobs:
         run: |
           cd spine-godot/build
           ./setup-extension.sh $GODOT_TAG $DEV_BUILD
-          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/23.2.8568313 ./build-extension.sh android
-          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/23.2.8568313 ./build-extension.sh android x86_64
+          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/28.1.13356709 ./build-extension.sh android
+          ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/28.1.13356709 ./build-extension.sh android x86_64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -163,7 +163,7 @@ jobs:
           path: spine-godot/example-v4-extension/bin/android/*.so
 
   build-web:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
@@ -172,7 +172,7 @@ jobs:
       - name: Set up Emscripten latest
         uses: mymindstorm/setup-emsdk@v11
         with:
-          version: 3.1.26
+          version: 4.0.20
 
       - name: Setup python and scons
         uses: ./.github/actions/setup-godot-deps-4
@@ -252,7 +252,7 @@ jobs:
           # Move artifacts to their correct locations
           mv gdextension-windows-$GODOT_TAG/* bin/windows/
           mv gdextension-linux-x86_64-$GODOT_TAG/* bin/linux/
-          mv gdextension-macos-$GODOT_TAG/* bin/macos/macos.framework/
+          mv gdextension-macos-$GODOT_TAG/* bin/macos/
           mv gdextension-ios-$GODOT_TAG/* bin/ios/
           mv gdextension-android-$GODOT_TAG/* bin/android/
           mv gdextension-web-$GODOT_TAG/* bin/web/

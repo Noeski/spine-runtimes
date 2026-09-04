@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 import { NumberArrayLike, Color, SkeletonClipping, Vector2, Utils, Skeleton, BlendMode, RegionAttachment, TextureAtlasRegion, MeshAttachment, ClippingAttachment } from "@esotericsoftware/spine-core";
@@ -54,6 +54,14 @@ export class SkeletonRenderer {
 	private temp2 = new Vector2();
 	private temp3 = new Color();
 	private temp4 = new Color();
+
+	/**
+	 * Batches additive slots together with normal slots by rendering additive slots with premultiplied alpha RGB and zero alpha,
+	 * while using normal PMA blending. This reduces draw calls for normal/additive/normal sequences with the same texture.
+	 *
+	 * Disabled by default in 4.2 to preserve exact additive alpha accumulation for transparent targets.
+	 */
+	pmaAdditiveBatching = false;
 
 	constructor (context: ManagedWebGLRenderingContext, twoColorTint: boolean = true) {
 		this.twoColorTint = twoColorTint;
@@ -135,14 +143,17 @@ export class SkeletonRenderer {
 			if (texture) {
 				let slotColor = slot.color;
 				let finalColor = this.tempColor;
+				let slotBlendMode = slot.data.blendMode;
+				let additiveBlend = this.pmaAdditiveBatching && premultipliedAlpha && slotBlendMode == BlendMode.Additive;
+				let alpha = skeletonColor.a * slotColor.a * attachmentColor.a;
 				finalColor.r = skeletonColor.r * slotColor.r * attachmentColor.r;
 				finalColor.g = skeletonColor.g * slotColor.g * attachmentColor.g;
 				finalColor.b = skeletonColor.b * slotColor.b * attachmentColor.b;
-				finalColor.a = skeletonColor.a * slotColor.a * attachmentColor.a;
+				finalColor.a = additiveBlend ? 0 : alpha;
 				if (premultipliedAlpha) {
-					finalColor.r *= finalColor.a;
-					finalColor.g *= finalColor.a;
-					finalColor.b *= finalColor.a;
+					finalColor.r *= alpha;
+					finalColor.g *= alpha;
+					finalColor.b *= alpha;
 				}
 				let darkColor = this.tempColor2;
 				if (!slot.darkColor)
@@ -158,9 +169,9 @@ export class SkeletonRenderer {
 					darkColor.a = premultipliedAlpha ? 1.0 : 0.0;
 				}
 
-				let slotBlendMode = slot.data.blendMode;
-				if (slotBlendMode != blendMode) {
-					blendMode = slotBlendMode;
+				let batchBlendMode = additiveBlend ? BlendMode.Normal : slotBlendMode;
+				if (batchBlendMode != blendMode) {
+					blendMode = batchBlendMode;
 					batcher.setBlendMode(blendMode, premultipliedAlpha);
 				}
 

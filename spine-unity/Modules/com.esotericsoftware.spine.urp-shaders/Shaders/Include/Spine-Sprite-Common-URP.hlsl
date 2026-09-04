@@ -14,7 +14,7 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
-#include "SpineCoreShaders/ShaderShared.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/ShaderShared.cginc"
 
 #if defined(SPECULAR)
 

@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,12 +23,13 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *****************************************************************************/
 
 package spine;
 
+import haxe.DynamicAccess;
 import Reflect;
 import haxe.Json;
 import spine.animation.AlphaTimeline;
@@ -134,8 +135,7 @@ class SkeletonJson {
 			boneData.scaleY = getFloat(boneMap, "scaleY", 1);
 			boneData.shearX = getFloat(boneMap, "shearX");
 			boneData.shearY = getFloat(boneMap, "shearY");
-			boneData.inherit = Reflect.hasField(boneMap,
-				"inherit") ? Inherit.fromName(Reflect.getProperty(boneMap, "inherit")) : Inherit.normal;
+			boneData.inherit = Reflect.hasField(boneMap, "inherit") ? Inherit.fromName(Reflect.getProperty(boneMap, "inherit")) : Inherit.normal;
 			boneData.skinRequired = Reflect.hasField(boneMap, "skin") ? cast(Reflect.getProperty(boneMap, "skin"), Bool) : false;
 
 			var color:String = Reflect.getProperty(boneMap, "color");
@@ -312,12 +312,17 @@ class SkeletonJson {
 				physicsData.wind = getFloat(constraintMap, "wind");
 				physicsData.gravity = getFloat(constraintMap, "gravity");
 				physicsData.mix = getValue(constraintMap, "mix", 1);
-				physicsData.inertiaGlobal = Reflect.hasField(constraintMap, "inertiaGlobal") ? cast(Reflect.getProperty(constraintMap, "inertiaGlobal"), Bool) : false;
-				physicsData.strengthGlobal = Reflect.hasField(constraintMap, "strengthGlobal") ? cast(Reflect.getProperty(constraintMap, "strengthGlobal"), Bool) : false;
-				physicsData.dampingGlobal = Reflect.hasField(constraintMap, "dampingGlobal") ? cast(Reflect.getProperty(constraintMap, "dampingGlobal"), Bool) : false;
-				physicsData.dampingGlobal = Reflect.hasField(constraintMap, "dampingGlobal") ? cast(Reflect.getProperty(constraintMap, "dampingGlobal"), Bool) : false;
+				physicsData.inertiaGlobal = Reflect.hasField(constraintMap,
+					"inertiaGlobal") ? cast(Reflect.getProperty(constraintMap, "inertiaGlobal"), Bool) : false;
+				physicsData.strengthGlobal = Reflect.hasField(constraintMap,
+					"strengthGlobal") ? cast(Reflect.getProperty(constraintMap, "strengthGlobal"), Bool) : false;
+				physicsData.dampingGlobal = Reflect.hasField(constraintMap,
+					"dampingGlobal") ? cast(Reflect.getProperty(constraintMap, "dampingGlobal"), Bool) : false;
+				physicsData.dampingGlobal = Reflect.hasField(constraintMap,
+					"dampingGlobal") ? cast(Reflect.getProperty(constraintMap, "dampingGlobal"), Bool) : false;
 				physicsData.windGlobal = Reflect.hasField(constraintMap, "windGlobal") ? cast(Reflect.getProperty(constraintMap, "windGlobal"), Bool) : false;
-				physicsData.gravityGlobal = Reflect.hasField(constraintMap, "gravityGlobal") ? cast(Reflect.getProperty(constraintMap, "gravityGlobal"), Bool) : false;
+				physicsData.gravityGlobal = Reflect.hasField(constraintMap,
+					"gravityGlobal") ? cast(Reflect.getProperty(constraintMap, "gravityGlobal"), Bool) : false;
 				physicsData.mixGlobal = Reflect.hasField(constraintMap, "mixGlobal") ? cast(Reflect.getProperty(constraintMap, "mixGlobal"), Bool) : false;
 
 				skeletonData.physicsConstraints.push(physicsData);
@@ -419,7 +424,7 @@ class SkeletonJson {
 		// Events.
 		var events:Dynamic = Reflect.getProperty(root, "events");
 		for (eventName in Reflect.fields(events)) {
-			var eventMap:Map<String, Dynamic> = Reflect.field(events, eventName);
+			var eventMap:DynamicAccess<Dynamic> = Reflect.field(events, eventName);
 			var eventData:EventData = new EventData(eventName);
 			eventData.intValue = getInt(eventMap, "int");
 			eventData.floatValue = getFloat(eventMap, "float");
@@ -517,7 +522,7 @@ class SkeletonJson {
 				var box:BoundingBoxAttachment = attachmentLoader.newBoundingBoxAttachment(skin, name);
 				if (box == null)
 					return null;
-				readVertices(map, box, Std.parseInt(Reflect.field(map, "vertexCount")) << 1);
+				readVertices(map, box, getInt(map, "vertexCount", 0) << 1);
 				return box;
 			case AttachmentType.path:
 				var path:PathAttachment = attachmentLoader.newPathAttachment(skin, name);
@@ -525,11 +530,10 @@ class SkeletonJson {
 					return null;
 				path.closed = Reflect.hasField(map, "closed") ? cast(Reflect.field(map, "closed"), Bool) : false;
 				path.constantSpeed = Reflect.hasField(map, "constantSpeed") ? cast(Reflect.field(map, "constantSpeed"), Bool) : true;
-				var vertexCount:Int = Std.parseInt(Reflect.field(map, "vertexCount"));
-				readVertices(map, path, vertexCount << 1);
+				readVertices(map, path, getInt(map, "vertexCount", 0) << 1);
 				var lengths:Array<Float> = new Array<Float>();
 				for (curves in cast(Reflect.field(map, "lengths"), Array<Dynamic>)) {
-					lengths.push(Std.parseFloat(curves) * scale);
+					lengths.push(curves * scale);
 				}
 				path.lengths = lengths;
 				return path;
@@ -556,8 +560,7 @@ class SkeletonJson {
 						throw new SpineException("Clipping end slot not found: " + end);
 					clip.endSlot = slot;
 				}
-				var vertexCount:Int = getInt(map, "vertexCount", 0);
-				readVertices(map, clip, vertexCount << 1);
+				readVertices(map, clip, getInt(map, "vertexCount", 0) << 1);
 				color = Reflect.getProperty(map, "color");
 				if (color != null) {
 					clip.color.setFromString(color);
@@ -1035,22 +1038,22 @@ class SkeletonJson {
 				}
 
 				var timeline:PhysicsConstraintTimeline;
-					if (timelineName == "inertia")
-						timeline = new PhysicsConstraintInertiaTimeline(frames, frames, constraintIndex);
-					else if (timelineName == "strength")
-						timeline = new PhysicsConstraintStrengthTimeline(frames, frames, constraintIndex);
-					else if (timelineName == "damping")
-						timeline = new PhysicsConstraintDampingTimeline(frames, frames, constraintIndex);
-					else if (timelineName == "mass")
-						timeline = new PhysicsConstraintMassTimeline(frames, frames, constraintIndex);
-					else if (timelineName == "wind")
-						timeline = new PhysicsConstraintWindTimeline(frames, frames, constraintIndex);
-					else if (timelineName == "gravity")
-						timeline = new PhysicsConstraintGravityTimeline(frames, frames, constraintIndex);
-					else if (timelineName == "mix") //
-						timeline = new PhysicsConstraintMixTimeline(frames, frames, constraintIndex);
-					else
-						continue;
+				if (timelineName == "inertia")
+					timeline = new PhysicsConstraintInertiaTimeline(frames, frames, constraintIndex);
+				else if (timelineName == "strength")
+					timeline = new PhysicsConstraintStrengthTimeline(frames, frames, constraintIndex);
+				else if (timelineName == "damping")
+					timeline = new PhysicsConstraintDampingTimeline(frames, frames, constraintIndex);
+				else if (timelineName == "mass")
+					timeline = new PhysicsConstraintMassTimeline(frames, frames, constraintIndex);
+				else if (timelineName == "wind")
+					timeline = new PhysicsConstraintWindTimeline(frames, frames, constraintIndex);
+				else if (timelineName == "gravity")
+					timeline = new PhysicsConstraintGravityTimeline(frames, frames, constraintIndex);
+				else if (timelineName == "mix") //
+					timeline = new PhysicsConstraintMixTimeline(frames, frames, constraintIndex);
+				else
+					continue;
 				timelines.push(readTimeline(timelineMap, timeline, 0, 1));
 			}
 		}

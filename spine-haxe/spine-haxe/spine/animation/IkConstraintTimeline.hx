@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,9 +23,9 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*****************************************************************************/
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package spine.animation;
 
@@ -33,6 +33,8 @@ import spine.Event;
 import spine.IkConstraint;
 import spine.Skeleton;
 
+/** Changes an IK constraint's spine.IkConstraint.mix, spine.IkConstraint.softness,
+ * spine.IkConstraint.bendDirection, spine.IkConstraint.stretch, and spine.IkConstraint.compress. */
 class IkConstraintTimeline extends CurveTimeline {
 	private static inline var ENTRIES:Int = 6;
 	private static inline var MIX:Int = 1;
@@ -41,7 +43,8 @@ class IkConstraintTimeline extends CurveTimeline {
 	private static inline var COMPRESS:Int = 4;
 	private static inline var STRETCH:Int = 5;
 
-	/** The index of the IK constraint in {@link Skeleton#ikConstraints} when this timeline is applied. */
+	/** The index of the IK constraint in spine.Skeleton.ikConstraints that will be changed when this timeline is
+	 * applied. */
 	public var constraintIndex:Int = 0;
 
 	public function new(frameCount:Int, bezierCount:Int, ikConstraintIndex:Int) {
@@ -53,7 +56,10 @@ class IkConstraintTimeline extends CurveTimeline {
 		return ENTRIES;
 	}
 
-	/** Sets the time in seconds, mix, softness, bend direction, compress, and stretch for the specified key frame. */
+	/** Sets the time, mix, softness, bend direction, compress, and stretch for the specified frame.
+	 * @param frame Between 0 and frameCount, inclusive.
+	 * @param time The frame time in seconds.
+	 * @param bendDirection 1 or -1. */
 	public function setFrame(frame:Int, time:Float, mix:Float, softness:Float, bendDirection:Int, compress:Bool, stretch:Bool):Void {
 		frame *= ENTRIES;
 		frames[frame] = time;

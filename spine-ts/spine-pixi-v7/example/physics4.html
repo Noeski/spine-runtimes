@@ -23,8 +23,8 @@
         document.body.appendChild(app.view);
 
         // Pre-load the skeleton data and atlas. You can also load .json skeleton data.
-        PIXI.Assets.add("cloudPotData", "./assets/cloud-pot.skel");
-        PIXI.Assets.add("cloudPotAtlas", "./assets/cloud-pot-pma.atlas");
+        PIXI.Assets.add("cloudPotData", "/assets/cloud-pot.skel");
+        PIXI.Assets.add("cloudPotAtlas", "/assets/cloud-pot-pma.atlas");
         await PIXI.Assets.load(["cloudPotData", "cloudPotAtlas"]);
 
         // Create the spine display object

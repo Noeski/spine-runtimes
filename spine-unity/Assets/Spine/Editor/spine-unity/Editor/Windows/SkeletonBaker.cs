@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #if UNITY_2018_3 || UNITY_2019 || UNITY_2018_3_OR_NEWER
@@ -69,6 +69,10 @@ namespace Spine.Unity.Editor {
 	public static class SkeletonBaker {
 
 		const string SpineEventStringId = "SpineEvent";
+		public static UnityEngine.Object SpineEventObjectPlaceholder {
+			get { return SpineEditorUtilities.Icons.skeletonDataAssetIcon; }
+		}
+
 		const float EventTimeEqualityEpsilon = 0.01f;
 
 		#region SkeletonMecanim's Mecanim Clips
@@ -130,6 +134,8 @@ namespace Spine.Unity.Editor {
 				}
 			}
 
+			SkeletonData skeletonData = skeletonDataAsset.GetSkeletonData(true);
+			float fps = skeletonData != null ? skeletonData.Fps : 0.0f;
 			foreach (Animation animations in data.Animations) {
 				string animationName = animations.Name; // Review for unsafe names. Requires runtime implementation too.
 				spineAnimationTable.Add(animationName, animations);
@@ -144,6 +150,7 @@ namespace Spine.Unity.Editor {
 				}
 
 				AnimationClip clip = unityAnimationClipTable[animationName];
+				clip.frameRate = fps;
 				clip.SetCurve("", typeof(GameObject), "dummy", AnimationCurve.Linear(0, 0, animations.Duration, 0));
 				AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(clip);
 				settings.stopTime = animations.Duration;
@@ -1528,9 +1535,13 @@ namespace Spine.Unity.Editor {
 
 				if (!string.IsNullOrEmpty(spineEvent.String)) {
 					unityAnimationEvent.stringParameter = spineEvent.String;
-				} else if (spineEvent.Int != 0) {
+					// if string (separate from name) is set in event, fallback to objectReferenceParameter.
+					unityAnimationEvent.objectReferenceParameter = SpineEventObjectPlaceholder;
+				}
+				if (spineEvent.Int != 0) {
 					unityAnimationEvent.intParameter = spineEvent.Int;
-				} else if (spineEvent.Float != 0) {
+				}
+				if (spineEvent.Float != 0) {
 					unityAnimationEvent.floatParameter = spineEvent.Float;
 				} // else, paramless function/Action.
 
@@ -1540,7 +1551,8 @@ namespace Spine.Unity.Editor {
 
 		static void AddPreviousUserEvents (ref List<AnimationEvent> allEvents, AnimationEvent[] previousEvents) {
 			foreach (AnimationEvent previousEvent in previousEvents) {
-				if (previousEvent.stringParameter == SpineEventStringId)
+				if (previousEvent.stringParameter == SpineEventStringId ||
+					previousEvent.objectReferenceParameter == SpineEventObjectPlaceholder)
 					continue;
 				AnimationEvent identicalEvent = allEvents.Find(newEvent => {
 					return newEvent.functionName == previousEvent.functionName &&

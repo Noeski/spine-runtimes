@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,10 +23,9 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
-#define VERSION_MAJOR 4
 
 #ifdef TOOLS_ENABLED
 #include "SpineEditorPlugin.h"
@@ -42,13 +41,18 @@
 #ifdef SPINE_GODOT_EXTENSION
 Error SpineAtlasResourceImportPlugin::_import(const String &source_file, const String &save_path, const Dictionary &options, const TypedArray<String> &platform_variants, const TypedArray<String> &gen_files) const {
 #else
+#if VERSION_MINOR > 3
+Error SpineAtlasResourceImportPlugin::import(ResourceUID::ID p_source_id, const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+#else
 Error SpineAtlasResourceImportPlugin::import(const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) {
+#endif
 #endif
 #else
 Error SpineAtlasResourceImportPlugin::import(const String &source_file, const String &save_path, const Map<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) {
 #endif
 	Ref<SpineAtlasResource> atlas(memnew(SpineAtlasResource));
 	atlas->set_normal_texture_prefix(options["normal_map_prefix"]);
+	atlas->set_specular_texture_prefix(options["specular_map_prefix"]);
 	atlas->load_from_atlas_file_internal(source_file, true);
 
 #if VERSION_MAJOR > 3
@@ -69,12 +73,19 @@ Error SpineAtlasResourceImportPlugin::import(const String &source_file, const St
 #ifdef SPINE_GODOT_EXTENSION
 TypedArray<Dictionary> SpineAtlasResourceImportPlugin::_get_import_options(const String &p_path, int32_t p_preset_index) const {
 	TypedArray<Dictionary> options;
-	Dictionary dictionary;
-	dictionary["name"] = "normal_map_prefix";
-	dictionary["type"] = Variant::STRING;
-	dictionary["hint_string"] = "String";
-	dictionary["default_value"] = String("n");
-	options.push_back(dictionary);
+	Dictionary normal_map_dictionary;
+	normal_map_dictionary["name"] = "normal_map_prefix";
+	normal_map_dictionary["type"] = Variant::STRING;
+	normal_map_dictionary["hint_string"] = "String";
+	normal_map_dictionary["default_value"] = String("n");
+	options.push_back(normal_map_dictionary);
+
+	Dictionary specular_map_dictionary;
+	specular_map_dictionary["name"] = "specular_map_prefix";
+	specular_map_dictionary["type"] = Variant::STRING;
+	specular_map_dictionary["hint_string"] = "String";
+	specular_map_dictionary["default_value"] = String("s");
+	options.push_back(specular_map_dictionary);
 	return options;
 }
 #else
@@ -84,12 +95,19 @@ void SpineAtlasResourceImportPlugin::get_import_options(const String &path, List
 void SpineAtlasResourceImportPlugin::get_import_options(List<ImportOption> *options, int preset) const {
 #endif
 	if (preset == 0) {
-		ImportOption op;
-		op.option.name = "normal_map_prefix";
-		op.option.type = Variant::STRING;
-		op.option.hint_string = "String";
-		op.default_value = String("n");
-		options->push_back(op);
+		ImportOption normal_map_op;
+		normal_map_op.option.name = "normal_map_prefix";
+		normal_map_op.option.type = Variant::STRING;
+		normal_map_op.option.hint_string = "String";
+		normal_map_op.default_value = String("n");
+		options->push_back(normal_map_op);
+
+		ImportOption specular_map_op;
+		specular_map_op.option.name = "specular_map_prefix";
+		specular_map_op.option.type = Variant::STRING;
+		specular_map_op.option.hint_string = "String";
+		specular_map_op.default_value = String("s");
+		options->push_back(specular_map_op);
 	}
 }
 #endif
@@ -98,7 +116,11 @@ void SpineAtlasResourceImportPlugin::get_import_options(List<ImportOption> *opti
 #ifdef SPINE_GODOT_EXTENSION
 Error SpineJsonResourceImportPlugin::_import(const String &source_file, const String &save_path, const Dictionary &options, const TypedArray<String> &platform_variants, const TypedArray<String> &gen_files) const {
 #else
+#if VERSION_MINOR > 3
+Error SpineJsonResourceImportPlugin::import(ResourceUID::ID p_source_id, const String &source_file, const String &save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+#else
 Error SpineJsonResourceImportPlugin::import(const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) {
+#endif
 #endif
 #else
 Error SpineJsonResourceImportPlugin::import(const String &source_file, const String &save_path, const Map<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) {
@@ -126,7 +148,11 @@ Error SpineJsonResourceImportPlugin::import(const String &source_file, const Str
 #ifdef SPINE_GODOT_EXTENSION
 Error SpineBinaryResourceImportPlugin::_import(const String &source_file, const String &save_path, const Dictionary &options, const TypedArray<String> &platform_variants, const TypedArray<String> &gen_files) const {
 #else
+#if VERSION_MINOR > 3
+Error SpineBinaryResourceImportPlugin::import(ResourceUID::ID p_source_id, const String &source_file, const String &save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+#else
 Error SpineBinaryResourceImportPlugin::import(const String &source_file, const String &save_path, const HashMap<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) {
+#endif
 #endif
 #else
 Error SpineBinaryResourceImportPlugin::import(const String &source_file, const String &save_path, const Map<StringName, Variant> &options, List<String> *platform_variants, List<String> *gen_files, Variant *metadata) {
@@ -152,11 +178,24 @@ Error SpineBinaryResourceImportPlugin::import(const String &source_file, const S
 
 #ifdef SPINE_GODOT_EXTENSION
 SpineEditorPlugin::SpineEditorPlugin() {
-	add_import_plugin(memnew(SpineAtlasResourceImportPlugin));
-	add_import_plugin(memnew(SpineJsonResourceImportPlugin));
-	add_import_plugin(memnew(SpineBinaryResourceImportPlugin));
-	add_inspector_plugin(memnew(SpineSkeletonDataResourceInspectorPlugin));
-	// add_inspector_plugin(memnew(SpineSpriteInspectorPlugin));
+	atlas_import_plugin = Ref<EditorImportPlugin>(memnew(SpineAtlasResourceImportPlugin));
+	json_import_plugin = Ref<EditorImportPlugin>(memnew(SpineJsonResourceImportPlugin));
+	binary_import_plugin = Ref<EditorImportPlugin>(memnew(SpineBinaryResourceImportPlugin));
+	skeleton_data_inspector_plugin = Ref<EditorInspectorPlugin>(memnew(SpineSkeletonDataResourceInspectorPlugin));
+
+	add_import_plugin(atlas_import_plugin);
+	add_import_plugin(json_import_plugin);
+	add_import_plugin(binary_import_plugin);
+	add_inspector_plugin(skeleton_data_inspector_plugin);
+}
+
+void SpineEditorPlugin::_notification(int p_what) {
+	if (p_what == NOTIFICATION_PREDELETE) {
+		remove_import_plugin(atlas_import_plugin);
+		remove_import_plugin(json_import_plugin);
+		remove_import_plugin(binary_import_plugin);
+		remove_inspector_plugin(skeleton_data_inspector_plugin);
+	}
 }
 #else
 SpineEditorPlugin::SpineEditorPlugin(EditorNode *node) {
@@ -173,7 +212,11 @@ bool SpineSkeletonDataResourceInspectorPlugin::_can_handle(Object *object) const
 #else
 bool SpineSkeletonDataResourceInspectorPlugin::can_handle(Object *object) {
 #endif
-	return object->is_class("SpineSkeletonDataResource");
+	if (!object) {
+		return false;
+	} else {
+		return object->is_class("SpineSkeletonDataResource");
+	}
 }
 
 #if VERSION_MAJOR > 3
@@ -407,7 +450,20 @@ void SpineEditorPropertyAnimationMix::update_property() {
 	mix_float->set_h_size_flags(SIZE_EXPAND_FILL);
 	mix_float->set_name_split_ratio(0);
 	mix_float->set_selectable(false);
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 6)
+	EditorPropertyRangeHint range_hint;
+	range_hint.min = 0;
+	range_hint.max = 9999999;
+	range_hint.step = 0.001;
+	range_hint.or_greater = true;
+	range_hint.or_less = false;
+	range_hint.exp_range = false;
+	range_hint.hide_control = false;
+	range_hint.radians_as_degrees = false;
+	mix_float->setup(range_hint);
+#else
 	mix_float->setup(0, 9999999, 0.001, true, false, false, false);
+#endif
 	mix_float->set_object_and_property(mix, "mix");
 	mix_float->update_property();
 #if VERSION_MAJOR > 3

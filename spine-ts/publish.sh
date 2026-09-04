@@ -15,14 +15,16 @@ sed -i '' "s/$currentVersion/$newVersion/" package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-canvas/package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-canvaskit/package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-core/package.json
-sed -i '' "s/$currentVersion/$newVersion/" spine-phaser/package.json
+sed -i '' "s/$currentVersion/$newVersion/" spine-phaser-v3/package.json
+sed -i '' "s/$currentVersion/$newVersion/" spine-phaser-v4/package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-pixi-v7/package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-pixi-v8/package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-player/package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-threejs/package.json
 sed -i '' "s/$currentVersion/$newVersion/" spine-webgl/package.json
+sed -i '' "s/$currentVersion/$newVersion/" spine-webcomponents/package.json
 
 rm package-lock.json
 rm -rf node_modules/@esotericsoftware
 npm install --workspaces
-npm publish --access public --workspaces
+npm publish --access public --workspaces --tag "v${major}.${minor}-latest"

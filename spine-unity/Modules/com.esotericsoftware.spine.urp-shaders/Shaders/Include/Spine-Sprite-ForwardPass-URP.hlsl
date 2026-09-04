@@ -1,20 +1,24 @@
 #ifndef VERTEX_LIT_FORWARD_PASS_URP_INCLUDED
 #define VERTEX_LIT_FORWARD_PASS_URP_INCLUDED
 
-#include "Include/Spine-Sprite-Common-URP.hlsl"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/Spine-Sprite-Common-URP.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-#include "SpineCoreShaders/SpriteLighting.cginc"
-#include "SpineCoreShaders/Spine-Common.cginc"
-#include "Spine-Common-URP.hlsl"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/SpriteLighting.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/Spine-Common.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/Spine-Common-URP.hlsl"
 
 #if defined(_ALPHAPREMULTIPLY_ON)
 	#undef _STRAIGHT_ALPHA_INPUT
 #elif !defined(_STRAIGHT_ALPHA_INPUT)
 	#define _STRAIGHT_ALPHA_INPUT
 #endif
-#include "SpineCoreShaders/Spine-Skeleton-Tint-Common.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/Spine-Skeleton-Tint-Common.cginc"
 
-#if defined(_RIM_LIGHTING) || defined(_ADDITIONAL_LIGHTS) || defined(MAIN_LIGHT_CALCULATE_SHADOWS) || defined(USE_LIGHT_COOKIES)
+#if !defined(DYNAMICLIGHTMAP_ON) && !defined(LIGHTMAP_ON) && (defined(PROBE_VOLUMES_L1) || defined(PROBE_VOLUMES_L2)) && defined(__PROBEVOLUME_HLSL__)
+#define USE_ADAPTIVE_PROBE_VOLUMES
+#endif
+
+#if defined(_RIM_LIGHTING) || defined(_ADDITIONAL_LIGHTS) || defined(MAIN_LIGHT_CALCULATE_SHADOWS) || defined(USE_LIGHT_COOKIES) || defined(USE_ADAPTIVE_PROBE_VOLUMES)
 	#define NEEDS_POSITION_WS
 #endif
 
@@ -47,6 +51,9 @@ struct VertexOutputLWRP
 #endif
 #if defined(_TINT_BLACK_ON)
 	float3 darkColor : TEXCOORD9;
+#endif
+#if defined(USE_ADAPTIVE_PROBE_VOLUMES)
+	float3 positionCS : TEXCOORD10;
 #endif
 
 	UNITY_VERTEX_OUTPUT_STEREO
@@ -325,6 +332,9 @@ VertexOutputLWRP ForwardPassVertexSprite(VertexInput input)
 #else
 	OUTPUT_SH(normalWS.xyz, output.vertexSH);
 #endif
+#if defined(USE_ADAPTIVE_PROBE_VOLUMES)
+	output.positionCS = output.pos;
+#endif
 	return output;
 }
 
@@ -370,7 +380,20 @@ half4 ForwardPassFragmentSprite(VertexOutputLWRP input
 #endif
 
 	inputData.normalWS = normalWS;
+#if defined(USE_ADAPTIVE_PROBE_VOLUMES)
+	half4 shadowMask = 1.0;
+	float4 ignoredProbeOcclusion;
+	inputData.bakedGI = SAMPLE_GI(input.vertexSH,
+		GetAbsolutePositionWS(input.positionWS),
+		inputData.normalWS.xyz,
+		GetWorldSpaceNormalizeViewDir(input.positionWS),
+		input.positionCS.xy,
+		ignoredProbeOcclusion,
+		shadowMask);
+#else // USE_ADAPTIVE_PROBE_VOLUMES
 	inputData.bakedGI = SAMPLE_GI(input.lightmapUV, input.vertexSH, inputData.normalWS);
+#endif
+
 #if defined(_RIM_LIGHTING) || defined(_ADDITIONAL_LIGHTS) || defined(USE_LIGHT_COOKIES)
 	inputData.positionWS = input.positionWS.rgb;
 #endif

@@ -36,16 +36,16 @@
 
 			loadAssets(canvas) {
 				// Load the skeleton file.
-				canvas.assetManager.loadBinary("assets/celestial-circus-pro.skel");
+				canvas.assetManager.loadBinary("/assets/celestial-circus-pro.skel");
 				// Load the atlas and its pages.
-				canvas.assetManager.loadTextureAtlas("assets/celestial-circus-pma.atlas");
+				canvas.assetManager.loadTextureAtlas("/assets/celestial-circus-pma.atlas");
 			}
 
 			initialize(canvas) {
 				let assetManager = canvas.assetManager;
 
 				// Create the texture atlas.
-				var atlas = assetManager.require("assets/celestial-circus-pma.atlas");
+				var atlas = assetManager.require("/assets/celestial-circus-pma.atlas");
 
 				// Create a AtlasAttachmentLoader that resolves region, mesh, boundingbox and path attachments
 				var atlasLoader = new spine.AtlasAttachmentLoader(atlas);
@@ -55,7 +55,7 @@
 
 				// Set the scale to apply during parsing, parse the file, and create a new skeleton.
 				skeletonBinary.scale = 0.5;
-				var skeletonData = skeletonBinary.readSkeletonData(assetManager.require("assets/celestial-circus-pro.skel"));
+				var skeletonData = skeletonBinary.readSkeletonData(assetManager.require("/assets/celestial-circus-pro.skel"));
 				this.skeleton = new spine.Skeleton(skeletonData);
 
 				// Create an AnimationState, and set the "run" animation in looping mode.

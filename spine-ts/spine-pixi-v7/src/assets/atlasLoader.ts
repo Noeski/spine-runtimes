@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,18 +23,21 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
+
 import { TextureAtlas } from "@esotericsoftware/spine-core";
 import { SpineTexture } from "../SpineTexture.js";
-import type { AssetExtension, Loader, UnresolvedAsset } from "@pixi/assets";
+import type { AssetExtension, Loader, ResolvedAsset, UnresolvedAsset } from "@pixi/assets";
 import { Assets, copySearchParams } from "@pixi/assets";
 import { LoaderParserPriority, checkExtension } from "@pixi/assets";
 import type { Texture } from "@pixi/core";
 import { ALPHA_MODES, ExtensionType, settings, utils, BaseTexture, extensions } from "@pixi/core";
 
 type RawAtlas = string;
+
+const loaderName = "spineTextureAtlasLoader";
 
 const spineTextureAtlasLoader: AssetExtension<RawAtlas | TextureAtlas, ISpineAtlasMetadata> = {
 	extension: ExtensionType.Asset,
@@ -52,36 +55,39 @@ const spineTextureAtlasLoader: AssetExtension<RawAtlas | TextureAtlas, ISpineAtl
 	},
 
 	loader: {
+		name: loaderName,
 		extension: {
 			type: ExtensionType.LoadParser,
 			priority: LoaderParserPriority.Normal,
-			name: "spineTextureAtlasLoader",
+			name: loaderName,
 		},
 
-		test(url: string): boolean {
+		test (url: string): boolean {
 			return checkExtension(url, ".atlas");
 		},
 
-		async load(url: string): Promise<RawAtlas> {
+		async load (url: string): Promise<RawAtlas> {
 			const response = await settings.ADAPTER.fetch(url);
 
-			const txt = await response.text();
+			if (!response.ok)
+				throw new Error(`[${loaderName}] Failed to fetch ${url}: ${response.status} ${response.statusText}`);
 
-			return txt;
+			return await response.text();
 		},
 
-		testParse(asset: unknown, options: {src: string}): Promise<boolean> {
-			const isExtensionRight = checkExtension(options.src, ".atlas");
+		testParse (asset: unknown, options: ResolvedAsset): Promise<boolean> {
+			const isExtensionRight = checkExtension(options.src!, ".atlas");
 			const isString = typeof asset === "string";
+			const isExplicitLoadParserSet = options.loadParser === loaderName;
 
-			return Promise.resolve(isExtensionRight && isString);
+			return Promise.resolve((isExtensionRight || isExplicitLoadParserSet) && isString);
 		},
 
-		unload(atlas: TextureAtlas) {
+		unload (atlas: TextureAtlas) {
 			atlas.dispose();
 		},
 
-		async parse(asset: RawAtlas, options: {src: string, data: ISpineAtlasMetadata}, loader: Loader): Promise<TextureAtlas> {
+		async parse (asset: RawAtlas, options: { src: string, data: ISpineAtlasMetadata }, loader: Loader): Promise<TextureAtlas> {
 			const metadata: ISpineAtlasMetadata = options.data || {};
 			let basePath = utils.path.dirname(options.src);
 
@@ -101,7 +107,6 @@ const spineTextureAtlasLoader: AssetExtension<RawAtlas | TextureAtlas, ISpineAtl
 
 			// we will wait for all promises for the textures at the same time at the end.
 			const textureLoadingPromises = [];
-
 
 			// setting preferCreateImageBitmap to false for loadTextures loader to allow loading PMA images
 			let oldPreferCreateImageBitmap = true;

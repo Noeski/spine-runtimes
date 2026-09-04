@@ -17,7 +17,7 @@ struct VertexInput {
 struct VertexOutput {
 	float4 vertex   : SV_POSITION;
 	fixed4 color    : COLOR;
-	half2 texcoord  : TEXCOORD0;
+	float2 texcoord  : TEXCOORD0;
 	float4 worldPosition : TEXCOORD1;
 	UNITY_VERTEX_OUTPUT_STEREO
 };

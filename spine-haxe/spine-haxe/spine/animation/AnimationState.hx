@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,9 +23,9 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*****************************************************************************/
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package spine.animation;
 
@@ -35,11 +35,52 @@ import spine.Event;
 import spine.Pool;
 import spine.Skeleton;
 
+/**
+ * Applies animations over time, queues animations for later playback, mixes (crossfading) between animations, and applies
+ * multiple animations on top of each other (layering).
+ *
+ * @see https://esotericsoftware.com/spine-applying-animations/ Applying Animations in the Spine Runtimes Guide
+ */
 class AnimationState {
+	/**
+	 * 1) A previously applied timeline has set this property.
+	 * Result: Mix from the current pose to the timeline pose.
+	 */
 	public static inline var SUBSEQUENT:Int = 0;
+	/**
+	 * 1) This is the first timeline to set this property.
+	 * 2) The next track entry applied after this one does not have a timeline to set this property.
+	 * Result: Mix from the setup pose to the timeline pose.
+	 */
 	public static inline var FIRST:Int = 1;
+	/**
+	 * 1) A previously applied timeline has set this property.
+	 * 2) The next track entry to be applied does have a timeline to set this property.
+	 * 3) The next track entry after that one does not have a timeline to set this property.
+	 * Result: Mix from the current pose to the timeline pose, but do not mix out. This avoids "dipping" when crossfading
+	 * animations that key the same property. A subsequent timeline will set this property using a mix.
+	 */
 	public static inline var HOLD_SUBSEQUENT:Int = 2;
+	/**
+	 * 1) This is the first timeline to set this property.
+	 * 2) The next track entry to be applied does have a timeline to set this property.
+	 * 3) The next track entry after that one does not have a timeline to set this property.
+	 * Result: Mix from the setup pose to the timeline pose, but do not mix out. This avoids "dipping" when crossfading animations
+	 * that key the same property. A subsequent timeline will set this property using a mix.
+	 */
 	public static inline var HOLD_FIRST:Int = 3;
+	/**
+	 * 1) This is the first timeline to set this property.
+	 * 2) The next track entry to be applied does have a timeline to set this property.
+	 * 3) The next track entry after that one does have a timeline to set this property.
+	 * 4) timelineHoldMix stores the first subsequent track entry that does not have a timeline to set this property.
+	 * Result: The same as HOLD except the mix percentage from the timelineHoldMix track entry is used. This handles when more than
+	 * 2 track entries in a row have a timeline that sets the same property.
+	 * Eg, A -> B -> C -> D where A, B, and C have a timeline setting same property, but D does not. When A is applied, to avoid
+	 * "dipping" A is not mixed out, however D (the first entry that doesn't set the property) mixing in is used to mix out A
+	 * (which affects B and C). Without using D to mix out, A would be applied fully until mixing completes, then snap to the mixed
+	 * out position.
+	 */
 	public static inline var HOLD_MIX:Int = 4;
 	public static inline var SETUP:Int = 1;
 	public static inline var CURRENT:Int = 2;
@@ -67,6 +108,9 @@ class AnimationState {
 
 	private var unkeyedState:Int = 0;
 
+	/**
+	 * Creates an uninitialized AnimationState. The animation state data must be set before use.
+	 */
 	public function new(data:AnimationStateData) {
 		if (data == null)
 			throw new SpineException("data can not be null");
@@ -77,6 +121,9 @@ class AnimationState {
 		});
 	}
 
+	/**
+	 * Increments each track entry spine.animation.TrackEntry.getTrackTime(), setting queued animations as current if needed.
+	 */
 	public function update(delta:Float):Void {
 		delta *= timeScale;
 		for (i in 0...tracks.length) {
@@ -138,6 +185,9 @@ class AnimationState {
 		queue.drain();
 	}
 
+	/**
+	 * Returns true when all mixing from entries are complete.
+	 */
 	private function updateMixingFrom(to:TrackEntry, delta:Float):Bool {
 		var from:TrackEntry = to.mixingFrom;
 		if (from == null)
@@ -148,18 +198,16 @@ class AnimationState {
 		from.animationLast = from.nextAnimationLast;
 		from.trackLast = from.nextTrackLast;
 
-		if (to.nextTrackLast != -1) { // The from entry was applied at least once.
-			var discard:Bool = to.mixTime == 0 && from.mixTime == 0; // Discard the from entry when neither have advanced yet.
-			if (to.mixTime >= to.mixDuration || discard) {
-				// Require totalAlpha == 0 to ensure mixing is complete or the transition is a single frame or discarded.
-				if (from.totalAlpha == 0 || to.mixDuration == 0 || discard) {
-					to.mixingFrom = from.mixingFrom;
-					if (from.mixingFrom != null) from.mixingFrom.mixingTo = to;
-					to.interruptAlpha = from.interruptAlpha;
-					queue.end(from);
-				}
-				return finished;
+		// The from entry was applied at least once and the mix is complete.
+		if (to.nextTrackLast != -1 && to.mixTime >= to.mixDuration) {
+			// Mixing is complete for all entries before the from entry or the mix is instantaneous.
+			if (from.totalAlpha == 0 || to.mixDuration == 0) {
+				to.mixingFrom = from.mixingFrom;
+				if (from.mixingFrom != null) from.mixingFrom.mixingTo = to;
+				to.interruptAlpha = from.interruptAlpha;
+				queue.end(from);
 			}
+			return finished;
 		}
 
 		from.trackTime += delta * from.timeScale;
@@ -167,6 +215,11 @@ class AnimationState {
 		return false;
 	}
 
+	/**
+	 * Poses the skeleton using the track entry animations. The animation state is not changed, so can be applied to multiple
+	 * skeletons to pose them identically.
+	 * @return True if any animations were applied.
+	 */
 	public function apply(skeleton:Skeleton):Bool {
 		if (skeleton == null)
 			throw new SpineException("skeleton cannot be null.");
@@ -352,6 +405,12 @@ class AnimationState {
 		return mix;
 	}
 
+	/**
+	 * Applies the attachment timeline and sets spine.Slot.attachmentState.
+	 * @param attachments False when: 1) the attachment timeline is mixing out, 2) mix < attachmentThreshold, and 3) the timeline
+	 *           is not the last timeline to set the slot's attachment. In that case the timeline is applied only so subsequent
+	 *           timelines see any deform.
+	 */
 	public function applyAttachmentTimeline(timeline:AttachmentTimeline, skeleton:Skeleton, time:Float, blend:MixBlend, attachments:Bool) {
 		var slot = skeleton.slots[timeline.slotIndex];
 		if (!slot.bone.active)
@@ -368,6 +427,10 @@ class AnimationState {
 			slot.attachmentState = this.unkeyedState + SETUP;
 	}
 
+	/**
+	 * Applies the rotate timeline, mixing with the current pose while keeping the same rotation direction chosen as the shortest
+	 * the first time the mixing was applied.
+	 */
 	public function applyRotateTimeline(timeline:RotateTimeline, skeleton:Skeleton, time:Float, alpha:Float, blend:MixBlend, timelinesRotation:Array<Float>,
 			i:Int, firstFrame:Bool) {
 		if (firstFrame)
@@ -483,6 +546,12 @@ class AnimationState {
 		}
 	}
 
+	/**
+	 * Removes all animations from all tracks, leaving skeletons in their current pose.
+	 *
+	 * It may be desired to use spine.animation.AnimationState.setEmptyAnimations() to mix the skeletons back to the setup pose,
+	 * rather than leaving them in their current pose.
+	 */
 	public function clearTracks():Void {
 		var oldTrainDisabled:Bool = queue.drainDisabled;
 		queue.drainDisabled = true;
@@ -494,6 +563,12 @@ class AnimationState {
 		queue.drain();
 	}
 
+	/**
+	 * Removes all animations from the track, leaving skeletons in their current pose.
+	 *
+	 * It may be desired to use spine.animation.AnimationState.setEmptyAnimation() to mix the skeletons back to the setup pose,
+	 * rather than leaving them in their current pose.
+	 */
 	public function clearTrack(trackIndex:Int):Void {
 		if (trackIndex >= tracks.length)
 			return;
@@ -542,6 +617,11 @@ class AnimationState {
 		queue.start(current);
 	}
 
+	/**
+	 * Sets an animation by name.
+	 *
+	 * See spine.animation.AnimationState.setAnimation().
+	 */
 	public function setAnimationByName(trackIndex:Int, animationName:String, loop:Bool):TrackEntry {
 		var animation:Animation = data.skeletonData.findAnimation(animationName);
 		if (animation == null)
@@ -549,6 +629,14 @@ class AnimationState {
 		return setAnimation(trackIndex, animation, loop);
 	}
 
+	/**
+	 * Sets the current animation for a track, discarding any queued animations. If the formerly current track entry was never
+	 * applied to a skeleton, it is replaced (not mixed from).
+	 * @param loop If true, the animation will repeat. If false it will not, instead its last frame is applied if played beyond its
+	 *           duration. In either case spine.animation.TrackEntry.getTrackEnd() determines when the track is cleared.
+	 * @return A track entry to allow further customization of animation playback. References to the track entry must not be kept
+	 *         after the spine.animation.AnimationStateListener.dispose() event occurs.
+	 */
 	public function setAnimation(trackIndex:Int, animation:Animation, loop:Bool):TrackEntry {
 		if (animation == null)
 			throw new SpineException("animation cannot be null.");
@@ -573,6 +661,11 @@ class AnimationState {
 		return entry;
 	}
 
+	/**
+	 * Queues an animation by name.
+	 *
+	 * See spine.animation.AnimationState.addAnimation().
+	 */
 	public function addAnimationByName(trackIndex:Int, animationName:String, loop:Bool, delay:Float):TrackEntry {
 		var animation:Animation = data.skeletonData.findAnimation(animationName);
 		if (animation == null)
@@ -580,6 +673,16 @@ class AnimationState {
 		return addAnimation(trackIndex, animation, loop, delay);
 	}
 
+	/**
+	 * Adds an animation to be played after the current or last queued animation for a track. If the track is empty, it is
+	 * equivalent to calling spine.animation.AnimationState.setAnimation().
+	 * @param delay If > 0, sets spine.animation.TrackEntry.getDelay(). If <= 0, the delay set is the duration of the previous track entry
+	 *           minus any mix duration (from the spine.animation.AnimationStateData) plus the specified delay (ie the mix
+	 *           ends at (delay = 0) or before (delay < 0) the previous track entry duration). If the
+	 *           previous entry is looping, its next loop completion is used instead of its duration.
+	 * @return A track entry to allow further customization of animation playback. References to the track entry must not be kept
+	 *         after the spine.animation.AnimationStateListener.dispose() event occurs.
+	 */
 	public function addAnimation(trackIndex:Int, animation:Animation, loop:Bool, delay:Float):TrackEntry {
 		if (animation == null)
 			throw new SpineException("animation cannot be null.");
@@ -596,17 +699,34 @@ class AnimationState {
 		if (last == null) {
 			setCurrent(trackIndex, entry, true);
 			queue.drain();
+			if (delay < 0) delay = 0;
 		} else {
 			last.next = entry;
 			entry.previous = last;
-			if (delay <= 0)
-				delay += last.getTrackComplete() - entry.mixDuration;
+			if (delay <= 0) delay = Math.max(delay + last.getTrackComplete() - entry.mixDuration, 0);
 		}
 
 		entry.delay = delay;
 		return entry;
 	}
 
+	/**
+	 * Sets an empty animation for a track, discarding any queued animations, and sets the track entry's
+	 * spine.animation.TrackEntry.getMixDuration(). An empty animation has no timelines and serves as a placeholder for mixing in or out.
+	 *
+	 * Mixing out is done by setting an empty animation with a mix duration using either spine.animation.AnimationState.setEmptyAnimation(),
+	 * spine.animation.AnimationState.setEmptyAnimations(), or spine.animation.AnimationState.addEmptyAnimation(). Mixing to an empty animation causes
+	 * the previous animation to be applied less and less over the mix duration. Properties keyed in the previous animation
+	 * transition to the value from lower tracks or to the setup pose value if no lower tracks key the property. A mix duration of
+	 * 0 still mixes out over one frame.
+	 *
+	 * Mixing in is done by first setting an empty animation, then adding an animation using
+	 * spine.animation.AnimationState.addAnimation() with the desired delay (an empty animation has a duration of 0) and on
+	 * the returned track entry, set the spine.animation.TrackEntry.setMixDuration(). Mixing from an empty animation causes the new
+	 * animation to be applied more and more over the mix duration. Properties keyed in the new animation transition from the value
+	 * from lower tracks or from the setup pose value if no lower tracks key the property to the value keyed in the new
+	 * animation.
+	 */
 	public function setEmptyAnimation(trackIndex:Int, mixDuration:Float):TrackEntry {
 		var entry:TrackEntry = setAnimation(trackIndex, emptyAnimation, false);
 		entry.mixDuration = mixDuration;
@@ -614,15 +734,31 @@ class AnimationState {
 		return entry;
 	}
 
+	/**
+	 * Adds an empty animation to be played after the current or last queued animation for a track, and sets the track entry's
+	 * spine.animation.TrackEntry.getMixDuration(). If the track is empty, it is equivalent to calling
+	 * spine.animation.AnimationState.setEmptyAnimation().
+	 *
+	 * See spine.animation.AnimationState.setEmptyAnimation().
+	 * @param delay If > 0, sets spine.animation.TrackEntry.getDelay(). If <= 0, the delay set is the duration of the previous track entry
+	 *           minus any mix duration plus the specified delay (ie the mix ends at (delay = 0) or
+	 *           before (delay < 0) the previous track entry duration). If the previous entry is looping, its next
+	 *           loop completion is used instead of its duration.
+	 * @return A track entry to allow further customization of animation playback. References to the track entry must not be kept
+	 *         after the spine.animation.AnimationStateListener.dispose() event occurs.
+	 */
 	public function addEmptyAnimation(trackIndex:Int, mixDuration:Float, delay:Float):TrackEntry {
 		var entry:TrackEntry = addAnimation(trackIndex, emptyAnimation, false, delay);
-		if (delay <= 0)
-			entry.delay += entry.mixDuration - mixDuration;
+		if (delay <= 0) entry.delay = Math.max(entry.delay + entry.mixDuration - mixDuration, 0);
 		entry.mixDuration = mixDuration;
 		entry.trackEnd = mixDuration;
 		return entry;
 	}
 
+	/**
+	 * Sets an empty animation for every track, discarding any queued animations, and mixes to it over the specified mix
+	 * duration.
+	 */
 	public function setEmptyAnimations(mixDuration:Float):Void {
 		var oldDrainDisabled:Bool = queue.drainDisabled;
 		queue.drainDisabled = true;
@@ -678,7 +814,9 @@ class AnimationState {
 		return entry;
 	}
 
-	/** Removes the {@link TrackEntry#getNext() next entry} and all entries after it for the specified entry. */
+	/**
+	 * Removes the spine.animation.TrackEntry.getNext() next entry and all entries after it for the specified entry.
+	 */
 	public function clearNext(entry:TrackEntry):Void {
 		var next:TrackEntry = entry.next;
 		while (next != null) {
@@ -760,6 +898,9 @@ class AnimationState {
 		}
 	}
 
+	/**
+	 * Returns the track entry for the animation currently playing on the track, or null if no animation is currently playing.
+	 */
 	public function getCurrent(trackIndex:Int):TrackEntry {
 		if (trackIndex >= tracks.length)
 			return null;
@@ -772,6 +913,9 @@ class AnimationState {
 		return onComplete.listeners.length > 0 || onEnd.listeners.length > 0;
 	}
 
+	/**
+	 * Removes all listeners added with spine.animation.AnimationState.addListener().
+	 */
 	public function clearListeners():Void {
 		onStart.listeners.resize(0);
 		onInterrupt.listeners.resize(0);
@@ -781,6 +925,11 @@ class AnimationState {
 		onEvent.listeners.resize(0);
 	}
 
+	/**
+	 * Discards all listener notifications that have not yet been delivered. This can be useful to call from an
+	 * spine.animation.AnimationStateListener when it is known that further notifications that may have been already queued for delivery
+	 * are not wanted because new animations are being set.
+	 */
 	public function clearListenerNotifications():Void {
 		queue.clear();
 	}

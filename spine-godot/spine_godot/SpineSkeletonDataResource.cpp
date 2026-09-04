@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #include "SpineSkeletonDataResource.h"
@@ -32,8 +32,32 @@
 
 #ifdef SPINE_GODOT_EXTENSION
 #include <godot_cpp/classes/encoded_object_as_id.hpp>
+#include <godot_cpp/classes/engine.hpp>
+#ifdef TOOLS_ENABLED
+#include <godot_cpp/classes/editor_interface.hpp>
+#endif
 #else
+#if VERSION_MAJOR > 3
+#include "core/config/engine.h"
+#ifdef TOOLS_ENABLED
+#include "editor/editor_interface.h"
+#endif
+#else
+#include "core/engine.h"
+#endif
 #include <core/io/marshalls.h>
+#endif
+
+#ifdef TOOLS_ENABLED
+#ifdef SPINE_GODOT_EXTENSION
+#include <godot_cpp/classes/editor_file_system.hpp>
+#else
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+#include "editor/file_system/editor_file_system.h"
+#else
+#include "editor/editor_file_system.h"
+#endif
+#endif
 #endif
 
 void SpineAnimationMix::_bind_methods() {
@@ -175,15 +199,114 @@ void SpineSkeletonDataResource::_bind_methods() {
 #endif
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "animation_mixes"),
 				 "set_animation_mixes", "get_animation_mixes");
+
+#ifdef TOOLS_ENABLED
+#if VERSION_MAJOR > 3
+	ClassDB::bind_method(D_METHOD("_on_resources_reimported", "resources"),
+						 &SpineSkeletonDataResource::_on_resources_reimported);
+#else
+	ClassDB::bind_method(D_METHOD("_on_resources_reimported", "resources"),
+						 &SpineSkeletonDataResource::_on_resources_reimported);
+#endif
+#endif
 }
 
+#ifdef TOOLS_ENABLED
+EditorFileSystem *get_editor_file_system() {
+#ifdef SPINE_GODOT_EXTENSION
+	EditorInterface *editor_interface = EditorInterface::get_singleton();
+	if (editor_interface) {
+		return editor_interface->get_resource_filesystem();
+	}
+	return nullptr;
+#else
+	return EditorFileSystem::get_singleton();
+#endif
+}
+#endif
+
 SpineSkeletonDataResource::SpineSkeletonDataResource()
-	: default_mix(0), skeleton_data(nullptr), animation_state_data(nullptr) {}
+	: default_mix(0), skeleton_data(nullptr), animation_state_data(nullptr) {
+
+#ifdef TOOLS_ENABLED
+#if VERSION_MAJOR > 3
+	if (Engine::get_singleton()->is_editor_hint()) {
+		EditorFileSystem *efs = get_editor_file_system();
+		if (efs) {
+			editor_file_system_id = efs->get_instance_id();
+			efs->connect("resources_reimported", callable_mp(this, &SpineSkeletonDataResource::_on_resources_reimported));
+		}
+	}
+#else
+	if (Engine::get_singleton()->is_editor_hint()) {
+		EditorFileSystem *efs = EditorFileSystem::get_singleton();
+		if (efs) {
+			editor_file_system_id = efs->get_instance_id();
+			efs->connect("resources_reimported", this, "_on_resources_reimported");
+		}
+	}
+#endif
+#endif
+}
 
 SpineSkeletonDataResource::~SpineSkeletonDataResource() {
+#ifdef TOOLS_ENABLED
+#if VERSION_MAJOR > 3
+	if (Engine::get_singleton()->is_editor_hint()) {
+		EditorFileSystem *efs = Object::cast_to<EditorFileSystem>(ObjectDB::get_instance(editor_file_system_id));
+		if (efs && efs->is_connected("resources_reimported", callable_mp(this, &SpineSkeletonDataResource::_on_resources_reimported))) {
+			efs->disconnect("resources_reimported", callable_mp(this, &SpineSkeletonDataResource::_on_resources_reimported));
+		}
+	}
+#else
+	if (Engine::get_singleton()->is_editor_hint()) {
+		EditorFileSystem *efs = Object::cast_to<EditorFileSystem>(ObjectDB::get_instance(editor_file_system_id));
+		if (efs && efs->is_connected("resources_reimported", this, "_on_resources_reimported")) {
+			efs->disconnect("resources_reimported", this, "_on_resources_reimported");
+		}
+	}
+#endif
+#endif
+
 	delete skeleton_data;
 	delete animation_state_data;
 }
+
+#ifdef TOOLS_ENABLED
+#if VERSION_MAJOR > 3
+void SpineSkeletonDataResource::_on_resources_reimported(const PackedStringArray &resources) {
+	for (int i = 0; i < resources.size(); i++) {
+		if (atlas_res.is_valid() && atlas_res->get_path() == resources[i]) {
+#ifdef SPINE_GODOT_EXTENSION
+			atlas_res = ResourceLoader::get_singleton()->load(resources[i], "SpineAtlasResource", ResourceLoader::CACHE_MODE_IGNORE);
+#else
+			atlas_res = ResourceLoader::load(resources[i], "SpineAtlasResource", ResourceFormatLoader::CACHE_MODE_IGNORE);
+#endif
+			update_skeleton_data();
+		} else if (skeleton_file_res.is_valid() && skeleton_file_res->get_path() == resources[i]) {
+#ifdef SPINE_GODOT_EXTENSION
+			skeleton_file_res = ResourceLoader::get_singleton()->load(resources[i], "SpineSkeletonFileResource", ResourceLoader::CACHE_MODE_IGNORE);
+#else
+			skeleton_file_res = ResourceLoader::load(resources[i], "SpineSkeletonFileResource", ResourceFormatLoader::CACHE_MODE_IGNORE);
+#endif
+			update_skeleton_data();
+		}
+	}
+}
+#else
+void SpineSkeletonDataResource::_on_resources_reimported(const PoolStringArray &resources) {
+	for (int i = 0; i < resources.size(); i++) {
+		if (atlas_res.is_valid() && atlas_res->get_path() == resources[i]) {
+			atlas_res = ResourceLoader::load(resources[i]);
+			update_skeleton_data();
+		} else if (skeleton_file_res.is_valid() && skeleton_file_res->get_path() == resources[i]) {
+			skeleton_file_res = ResourceLoader::load(resources[i]);
+			update_skeleton_data();
+		}
+	}
+}
+#endif
+#endif
 
 void SpineSkeletonDataResource::update_skeleton_data() {
 	if (skeleton_data) {
@@ -222,7 +345,7 @@ void SpineSkeletonDataResource::load_resources(spine::Atlas *atlas,
 	spine::SkeletonData *data;
 	if (!EMPTY(json)) {
 		spine::SkeletonJson skeletonJson(atlas);
-		data = skeletonJson.readSkeletonData(json.utf8());
+		data = skeletonJson.readSkeletonData(json.utf8().ptr());
 		if (!data) {
 			ERR_PRINT(String("Error while loading skeleton data: ") + get_path());
 			ERR_PRINT(String("Error message: ") + skeletonJson.getError().buffer());
@@ -249,22 +372,6 @@ bool SpineSkeletonDataResource::is_skeleton_data_loaded() const {
 void SpineSkeletonDataResource::set_atlas_res(
 		const Ref<SpineAtlasResource> &atlas) {
 	atlas_res = atlas;
-	if (atlas_res.is_valid()) {
-#if VERSION_MAJOR > 3
-		if (!atlas_res->is_connected(
-					SNAME("skeleton_atlas_changed"),
-					callable_mp(this,
-								&SpineSkeletonDataResource::update_skeleton_data)))
-			atlas_res->connect(
-					SNAME("skeleton_atlas_changed"),
-					callable_mp(this, &SpineSkeletonDataResource::update_skeleton_data));
-#else
-		if (!atlas_res->is_connected(SNAME("skeleton_atlas_changed"), this,
-									 SNAME("update_skeleton_data")))
-			atlas_res->connect(SNAME("skeleton_atlas_changed"), this,
-							   SNAME("update_skeleton_data"));
-#endif
-	}
 	update_skeleton_data();
 }
 
@@ -275,22 +382,6 @@ Ref<SpineAtlasResource> SpineSkeletonDataResource::get_atlas_res() {
 void SpineSkeletonDataResource::set_skeleton_file_res(
 		const Ref<SpineSkeletonFileResource> &skeleton_file) {
 	skeleton_file_res = skeleton_file;
-	if (skeleton_file_res.is_valid()) {
-#if VERSION_MAJOR > 3
-		if (!skeleton_file_res->is_connected(
-					SNAME("skeleton_file_changed"),
-					callable_mp(this,
-								&SpineSkeletonDataResource::update_skeleton_data)))
-			skeleton_file_res->connect(
-					SNAME("skeleton_file_changed"),
-					callable_mp(this, &SpineSkeletonDataResource::update_skeleton_data));
-#else
-		if (!skeleton_file_res->is_connected(SNAME("skeleton_file_changed"), this,
-											 SNAME("update_skeleton_data")))
-			skeleton_file_res->connect(SNAME("skeleton_file_changed"), this,
-									   SNAME("update_skeleton_data"));
-#endif
-	}
 	update_skeleton_data();
 }
 
@@ -300,11 +391,9 @@ SpineSkeletonDataResource::get_skeleton_file_res() {
 }
 
 #ifdef SPINE_GODOT_EXTENSION
-void SpineSkeletonDataResource::get_animation_names(
-		PackedStringArray &animation_names) const {
+void SpineSkeletonDataResource::get_animation_names(PackedStringArray &animation_names) const {
 #else
-void SpineSkeletonDataResource::get_animation_names(
-		Vector<String> &animation_names) const {
+void SpineSkeletonDataResource::get_animation_names(Vector<String> &animation_names) const {
 #endif
 	animation_names.clear();
 	if (!is_skeleton_data_loaded())
@@ -312,16 +401,20 @@ void SpineSkeletonDataResource::get_animation_names(
 	auto animations = skeleton_data->getAnimations();
 	for (size_t i = 0; i < animations.size(); ++i) {
 		auto animation = animations[i];
-		animation_names.push_back(animation->getName().buffer());
+		String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+		name = String::utf8(animation->getName().buffer());
+#else
+		name.parse_utf8(animation->getName().buffer());
+#endif
+		animation_names.push_back(name);
 	}
 }
 
 #ifdef SPINE_GODOT_EXTENSION
-void SpineSkeletonDataResource::get_skin_names(
-		PackedStringArray &skin_names) const {
+void SpineSkeletonDataResource::get_skin_names(PackedStringArray &skin_names) const {
 #else
-void SpineSkeletonDataResource::get_skin_names(
-		Vector<String> &skin_names) const {
+void SpineSkeletonDataResource::get_skin_names(Vector<String> &skin_names) const {
 #endif
 	skin_names.clear();
 	if (!is_skeleton_data_loaded())
@@ -329,7 +422,13 @@ void SpineSkeletonDataResource::get_skin_names(
 	auto skins = skeleton_data->getSkins();
 	for (size_t i = 0; i < skins.size(); ++i) {
 		auto skin = skins[i];
-		skin_names.push_back(skin->getName().buffer());
+		String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+		name = String::utf8(skin->getName().buffer());
+#else
+		name.parse_utf8(skin->getName().buffer());
+#endif
+		skin_names.push_back(name);
 	}
 }
 
@@ -344,7 +443,13 @@ void SpineSkeletonDataResource::get_slot_names(Vector<String> &slot_names) {
 	auto slots = skeleton_data->getSlots();
 	for (size_t i = 0; i < slots.size(); ++i) {
 		auto slot = slots[i];
-		slot_names.push_back(slot->getName().buffer());
+		String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+		name = String::utf8(slot->getName().buffer());
+#else
+		name.parse_utf8(slot->getName().buffer());
+#endif
+		slot_names.push_back(name);
 	}
 }
 
@@ -359,7 +464,13 @@ void SpineSkeletonDataResource::get_bone_names(Vector<String> &bone_names) {
 	auto bones = skeleton_data->getBones();
 	for (size_t i = 0; i < bones.size(); ++i) {
 		auto bone = bones[i];
-		bone_names.push_back(bone->getName().buffer());
+		String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+		name = String::utf8(bone->getName().buffer());
+#else
+		name.parse_utf8(bone->getName().buffer());
+#endif
+		bone_names.push_back(name);
 	}
 }
 
@@ -542,7 +653,13 @@ SpineSkeletonDataResource::find_physics_constraint(
 
 String SpineSkeletonDataResource::get_skeleton_name() const {
 	SPINE_CHECK(skeleton_data, "")
-	return skeleton_data->getName().buffer();
+	String name;
+#if (VERSION_MAJOR >= 4 && VERSION_MINOR >= 5)
+	name = String::utf8(skeleton_data->getName().buffer());
+#else
+	name.parse_utf8(skeleton_data->getName().buffer());
+#endif
+	return name;
 }
 
 Array SpineSkeletonDataResource::get_bones() const {

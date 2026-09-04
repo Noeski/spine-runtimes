@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,13 +23,15 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*****************************************************************************/
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package spine.animation;
 
-/** Base class for frames that use an interpolation bezier curve. */
+import spine.ArrayUtils;
+
+/** The base class for timelines that interpolate between frame values using stepped, linear, or a Bezier curve. */
 class CurveTimeline extends Timeline {
 	private static inline var LINEAR:Int = 0;
 	private static inline var STEPPED:Int = 1;
@@ -38,22 +40,27 @@ class CurveTimeline extends Timeline {
 
 	private var curves:Array<Float>; // type, x, y, ...
 
+	/** @param bezierCount The maximum number of Bezier curves. See CurveTimeline.shrink().
+	 * @param propertyIds Unique identifiers for the properties the timeline modifies. */
 	public function new(frameCount:Int, bezierCount:Int, propertyIds:Array<String>) {
 		super(frameCount, propertyIds);
-		curves = new Array<Float>();
-		curves.resize(frameCount + bezierCount * BEZIER_SIZE);
+		curves = ArrayUtils.resize(new Array<Float>(), frameCount + bezierCount * BEZIER_SIZE, 0);
 		curves[frameCount - 1] = STEPPED;
 	}
 
+	/** Sets the specified frame to linear interpolation.
+	 * @param frame Between 0 and frameCount - 1, inclusive. */
 	public function setLinear(frame:Int):Void {
 		curves[frame] = LINEAR;
 	}
 
+	/** Sets the specified frame to stepped interpolation.
+	 * @param frame Between 0 and frameCount - 1, inclusive. */
 	public function setStepped(frame:Int):Void {
 		curves[frame] = STEPPED;
 	}
 
-	/** Shrinks the storage for Bezier curves, for use when <code>bezierCount</code> (specified in the constructor) was larger
+	/** Shrinks the storage for Bezier curves, for use when bezierCount (specified in the constructor) was larger
 	 * than the actual number of Bezier curves. */
 	public function shrink(bezierCount:Int):Void {
 		var size:Int = getFrameCount() + bezierCount * BEZIER_SIZE;
@@ -62,10 +69,10 @@ class CurveTimeline extends Timeline {
 
 	/** Stores the segments for the specified Bezier curve. For timelines that modify multiple values, there may be more than
 	 * one curve per frame.
-	 * @param bezier The ordinal of this Bezier curve for this timeline, between 0 and <code>bezierCount - 1</code> (specified
+	 * @param bezier The ordinal of this Bezier curve for this timeline, between 0 and bezierCount - 1 (specified
 	 *           in the constructor), inclusive.
-	 * @param frame Between 0 and <code>frameCount - 1</code>, inclusive.
-	 * @param value The index of the value for this frame that this curve is used for.
+	 * @param frame Between 0 and frameCount - 1, inclusive.
+	 * @param value The index of the value for the frame this curve is used for.
 	 * @param time1 The time for the first key.
 	 * @param value1 The value for the first key.
 	 * @param cx1 The time for the first Bezier handle.
@@ -103,9 +110,9 @@ class CurveTimeline extends Timeline {
 	}
 
 	/** Returns the Bezier interpolated value for the specified time.
-	 * @param frameIndex The index into {@link #getFrames()} for the values of the frame before <code>time</code>.
-	 * @param valueOffset The offset from <code>frameIndex</code> to the value this curve is used for.
-	 * @param i The index of the Bezier segments. See {@link #getCurveType(int)}. */
+	 * @param frameIndex The index into Timeline.getFrames() for the values of the frame before time.
+	 * @param valueOffset The offset from frameIndex to the value this curve is used for.
+	 * @param i The index of the Bezier segments. See CurveTimeline.getCurveType(). */
 	public function getBezierValue(time:Float, frameIndex:Int, valueOffset:Int, i:Int):Float {
 		var x:Float, y:Float;
 		if (curves[i] > time) {

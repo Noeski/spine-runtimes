@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,18 +23,43 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
+
+//#define SPINE_ALLOW_UNSAFE // note: this define can be set via Edit - Preferences - Spine.
+
+#if UNITY_2021_2_OR_NEWER
+#define TEXT_ASSET_HAS_GET_DATA_BYTES
+#endif
+
+#if SPINE_ALLOW_UNSAFE && TEXT_ASSET_HAS_GET_DATA_BYTES
+#define UNSAFE_DIRECT_ACCESS_TEXT_ASSET_DATA
+#endif
 
 using System;
 using System.Collections.Generic;
 using System.IO;
+#if UNSAFE_DIRECT_ACCESS_TEXT_ASSET_DATA
+using Unity.Collections;
+#endif
 using UnityEngine;
-
 using CompatibilityProblemInfo = Spine.Unity.SkeletonDataCompatibility.CompatibilityProblemInfo;
 
 namespace Spine.Unity {
+#if UNSAFE_DIRECT_ACCESS_TEXT_ASSET_DATA
+	public static class TextAssetExtensions {
+		public static Stream GetStreamUnsafe (this TextAsset textAsset) {
+			NativeArray<byte> dataNativeArray = textAsset.GetData<byte>();
+			return dataNativeArray.GetUnmanagedMemoryStream();
+		}
+
+		public static unsafe UnmanagedMemoryStream GetUnmanagedMemoryStream<T> (this NativeArray<T> nativeArray) where T : struct {
+			return new UnmanagedMemoryStream((byte*)global::Unity.Collections.LowLevel.Unsafe.
+				NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(nativeArray), nativeArray.Length);
+		}
+	}
+#endif
 
 	[CreateAssetMenu(fileName = "New SkeletonDataAsset", menuName = "Spine/SkeletonData Asset")]
 	public class SkeletonDataAsset : ScriptableObject {
@@ -127,7 +152,8 @@ namespace Spine.Unity {
 			return stateData;
 		}
 
-		/// <summary>Loads, caches and returns the SkeletonData from the skeleton data file. Returns the cached SkeletonData after the first time it is called. Pass false to prevent direct errors from being logged.</summary>
+		/// <summary>Loads, caches and returns the SkeletonData from the skeleton data file. Returns the cached SkeletonData after the first time it is called.</summary>
+		/// <param name="quiet">Pass true to prevent direct errors from being logged.</param>
 		public SkeletonData GetSkeletonData (bool quiet) {
 			if (skeletonJSON == null) {
 #if UNITY_EDITOR
@@ -188,9 +214,15 @@ namespace Spine.Unity {
 			SkeletonData loadedSkeletonData = null;
 
 			try {
-				if (hasBinaryExtension)
+				if (hasBinaryExtension) {
+#if UNSAFE_DIRECT_ACCESS_TEXT_ASSET_DATA
+					using (Stream stream = skeletonJSON.GetStreamUnsafe()) {
+						loadedSkeletonData = SkeletonDataAsset.ReadSkeletonData(stream, attachmentLoader, skeletonDataScale);
+					}
+#else
 					loadedSkeletonData = SkeletonDataAsset.ReadSkeletonData(skeletonJSON.bytes, attachmentLoader, skeletonDataScale);
-				else
+#endif
+				} else
 					loadedSkeletonData = SkeletonDataAsset.ReadSkeletonData(skeletonJSON.text, attachmentLoader, skeletonDataScale);
 			} catch (Exception ex) {
 				if (!quiet)
@@ -285,6 +317,13 @@ namespace Spine.Unity {
 				};
 				return binary.ReadSkeletonData(input);
 			}
+		}
+
+		internal static SkeletonData ReadSkeletonData (Stream assetStream, AttachmentLoader attachmentLoader, float scale) {
+			SkeletonBinary binary = new SkeletonBinary(attachmentLoader) {
+				Scale = scale
+			};
+			return binary.ReadSkeletonData(assetStream);
 		}
 
 		internal static SkeletonData ReadSkeletonData (string text, AttachmentLoader attachmentLoader, float scale) {

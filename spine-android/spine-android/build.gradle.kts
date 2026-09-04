@@ -1,8 +1,26 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidLibrary)
     `maven-publish`
     signing
 }
+
+// Function to read properties from spine-libgdx gradle.properties - single source of truth
+fun readSpineLibgdxProperty(propertyName: String): String {
+    val spineLibgdxPropsFile = File(rootProject.projectDir, "../spine-libgdx/gradle.properties")
+    if (!spineLibgdxPropsFile.exists()) {
+        throw GradleException("spine-libgdx gradle.properties file not found at ${spineLibgdxPropsFile.absolutePath}")
+    }
+    val lines = spineLibgdxPropsFile.readLines()
+    for (line in lines) {
+        if (line.startsWith("$propertyName=")) {
+            return line.split("=")[1].trim()
+        }
+    }
+    throw GradleException("Property '$propertyName' not found in spine-libgdx gradle.properties")
+}
+
 
 android {
     namespace = "com.esotericsoftware.spine"
@@ -32,15 +50,14 @@ android {
 
 dependencies {
     implementation(libs.androidx.appcompat)
-    api("com.badlogicgames.gdx:gdx:1.12.2-SNAPSHOT")
-    api("com.esotericsoftware.spine:spine-libgdx:4.2.7")
+    api("com.badlogicgames.gdx:gdx:${readSpineLibgdxProperty("libgdx_version")}")
+    api("com.esotericsoftware.spine:spine-libgdx:${readSpineLibgdxProperty("version")}")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
 
-val libraryVersion = "4.2.10-SNAPSHOT";
 
 tasks.register<Jar>("sourceJar") {
     archiveClassifier.set("sources")
@@ -56,17 +73,20 @@ afterEvaluate {
 
                 groupId = "com.esotericsoftware.spine"
                 artifactId = "spine-android"
-                version = libraryVersion
+                version = project.version.toString()
 
                 pom {
                     packaging = "aar"
-                    name.set("spine-android")
-                    description.set("Spine Runtime for Android")
-                    url.set("https://github.com/esotericsoftware/spine-runtimes")
+                    name.set(project.findProperty("POM_NAME") as String? ?: "spine-android")
+                    if (project.hasProperty("POM_DESCRIPTION")) {
+                        description.set(project.findProperty("POM_DESCRIPTION") as String)
+                    }
+                    url.set(project.findProperty("POM_URL") as String? ?: "https://github.com/esotericsoftware/spine-runtimes")
                     licenses {
                         license {
-                            name.set("Spine Runtimes License")
-                            url.set("http://esotericsoftware.com/spine-runtimes-license")
+                            name.set(project.findProperty("POM_LICENCE_NAME") as String? ?: "Spine Runtimes License")
+                            url.set(project.findProperty("POM_LICENCE_URL") as String? ?: "http://esotericsoftware.com/spine-runtimes-license")
+                            distribution.set(project.findProperty("POM_LICENCE_DIST") as String? ?: "repo")
                         }
                     }
                     developers {
@@ -76,9 +96,9 @@ afterEvaluate {
                         }
                     }
                     scm {
-                        url.set(pom.url.get())
-                        connection.set("scm:git:${url.get()}.git")
-                        developerConnection.set("scm:git:${url.get()}.git")
+                        connection.set(project.findProperty("POM_SCM_CONNECTION") as String? ?: "scm:git:https://github.com/esotericsoftware/spine-runtimes.git")
+                        developerConnection.set(project.findProperty("POM_SCM_DEV_CONNECTION") as String? ?: "scm:git:https://github.com/esotericsoftware/spine-runtimes.git")
+                        url.set(project.findProperty("POM_SCM_URL") as String? ?: "https://github.com/esotericsoftware/spine-runtimes")
                     }
 
                     withXml {
@@ -108,15 +128,34 @@ afterEvaluate {
         repositories {
             maven {
                 name = "SonaType"
-                url = uri(if (libraryVersion.endsWith("-SNAPSHOT")) {
-                    "https://oss.sonatype.org/content/repositories/snapshots"
+                url = uri(if (project.version.toString().endsWith("-SNAPSHOT")) {
+                    if (project.hasProperty("SNAPSHOT_REPOSITORY_URL")) {
+                        project.property("SNAPSHOT_REPOSITORY_URL") as String
+                    } else {
+                        "https://central.sonatype.com/repository/maven-snapshots/"
+                    }
                 } else {
-                    "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+                    // If release build, dump artifacts to local build/staging-deploy folder for consumption by jreleaser
+                    layout.buildDirectory.dir("staging-deploy")
                 })
 
-                credentials {
-                    username = project.findProperty("ossrhUsername") as String?
-                    password = project.findProperty("ossrhPassword") as String?
+                if (project.version.toString().endsWith("-SNAPSHOT")) {
+                    val username = if (project.hasProperty("MAVEN_USERNAME")) {
+                        project.property("MAVEN_USERNAME") as String
+                    } else {
+                        ""
+                    }
+                    val password = if (project.hasProperty("MAVEN_PASSWORD")) {
+                        project.property("MAVEN_PASSWORD") as String
+                    } else {
+                        ""
+                    }
+                    if (username.isNotEmpty() || password.isNotEmpty()) {
+                        credentials {
+                            this.username = username
+                            this.password = password
+                        }
+                    }
                 }
             }
         }
@@ -129,6 +168,35 @@ afterEvaluate {
     }
 
     tasks.withType<Sign> {
-        onlyIf { !libraryVersion.endsWith("-SNAPSHOT") }
+        onlyIf { !project.version.toString().endsWith("-SNAPSHOT") }
     }
 }
+
+// JReleaser config for release builds to Central Portal
+if (project.hasProperty("RELEASE")) {
+    apply(plugin = "org.jreleaser")
+
+    configure<org.jreleaser.gradle.plugin.JReleaserExtension> {
+        deploy {
+            maven {
+                mavenCentral {
+                    create("sonatype") {
+                        setActive("ALWAYS")
+                        url = "https://central.sonatype.com/api/v1/publisher"
+                        username = if (hasProperty("MAVEN_USERNAME")) property("MAVEN_USERNAME").toString() else ""
+                        password = if (hasProperty("MAVEN_PASSWORD")) property("MAVEN_PASSWORD").toString() else ""
+                        stagingRepository(layout.buildDirectory.dir("staging-deploy").get().asFile.absolutePath)
+                        sign = false
+                        verifyPom = false
+                    }
+                }
+            }
+        }
+    }
+
+    tasks.register("publishRelease") {
+        dependsOn(tasks.withType<PublishToMavenRepository>())
+        finalizedBy(tasks.named("jreleaserDeploy"))
+    }
+}
+

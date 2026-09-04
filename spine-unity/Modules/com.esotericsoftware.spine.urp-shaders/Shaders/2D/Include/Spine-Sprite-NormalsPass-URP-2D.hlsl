@@ -1,8 +1,8 @@
 #ifndef SPRITE_NORMALS_PASS_URP_INCLUDED
 #define SPRITE_NORMALS_PASS_URP_INCLUDED
 
-#include "../Include/SpineCoreShaders/ShaderShared.cginc"
-#include "../Include/SpineCoreShaders/SpriteLighting.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/ShaderShared.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/SpriteLighting.cginc"
 
 struct Varyings
 {

@@ -1,7 +1,7 @@
 #ifndef SPRITES_DEPTH_ONLY_PASS_URP_INCLUDED
 #define SPRITES_DEPTH_ONLY_PASS_URP_INCLUDED
 
-#include "Include/Spine-Sprite-Common-URP.hlsl"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/Spine-Sprite-Common-URP.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
 struct AttributesSprite

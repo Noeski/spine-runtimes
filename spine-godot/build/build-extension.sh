@@ -57,87 +57,7 @@ echo "CPUS: $cpus"
 
 pushd ..
 
-if [ "$raw_platform" == "ios" ]; then
-    BINDIR="example-v4-extension/bin/ios"
-    mkdir -p $BINDIR
-
-    # Step 1: Build simulator binaries
-    echo "Building for iOS simulator..."
-    scons -j $cpus $options $platform target=template_debug arch=universal ios_simulator=yes
-    mv $BINDIR/ios.framework/libspine_godot.ios.template_debug $BINDIR/libspine_godot.ios.template_debug.simulator.a
-
-    scons -j $cpus $options $platform target=template_release arch=universal ios_simulator=yes
-    mv $BINDIR/ios.framework/libspine_godot.ios.template_release $BINDIR/libspine_godot.ios.template_release.simulator.a
-
-    # Step 2: Build device binaries
-    echo "Building for iOS device..."
-    scons -j $cpus $options $platform target=template_debug arch=arm64 ios_simulator=no
-    mv $BINDIR/ios.framework/libspine_godot.ios.template_debug $BINDIR/libspine_godot.ios.template_debug.a
-
-    scons -j $cpus $options $platform target=template_release arch=arm64 ios_simulator=no
-    mv $BINDIR/ios.framework/libspine_godot.ios.template_release $BINDIR/libspine_godot.ios.template_release.a
-
-    # Step 3: Create xcframeworks
-    echo "Creating xcframeworks..."
-
-    xcodebuild -create-xcframework \
-        -library $BINDIR/libspine_godot.ios.template_debug.a \
-        -library $BINDIR/libspine_godot.ios.template_debug.simulator.a \
-        -output $BINDIR/libspine_godot.ios.template_debug.xcframework
-
-    xcodebuild -create-xcframework \
-        -library $BINDIR/libspine_godot.ios.template_release.a \
-        -library $BINDIR/libspine_godot.ios.template_release.simulator.a \
-        -output $BINDIR/libspine_godot.ios.template_release.xcframework
-
-    # Cleanup intermediate files
-    rm -f $BINDIR/*.a
-    rm -rf $BINDIR/ios.framework
-
-elif [ "$raw_platform" == "macos" ]; then
-    BINDIR="example-v4-extension/bin/macos/macos.framework"
-    TMPDIR="example-v4-extension/bin/macos/tmp"
-    mkdir -p $BINDIR $TMPDIR
-
-    # Build x86_64 binaries
-    echo "Building for macOS x86_64..."
-    scons -j $cpus $options $platform target=editor arch=x86_64
-    mv $BINDIR/libspine_godot.macos.editor $TMPDIR/libspine_godot.macos.editor.x86_64
-    scons -j $cpus $options $platform target=template_debug arch=x86_64
-    mv $BINDIR/libspine_godot.macos.template_debug $TMPDIR/libspine_godot.macos.template_debug.x86_64
-    scons -j $cpus $options $platform target=template_release arch=x86_64
-    mv $BINDIR/libspine_godot.macos.template_release $TMPDIR/libspine_godot.macos.template_release.x86_64
-
-    # Build arm64 binaries
-    echo "Building for macOS arm64..."
-    scons -j $cpus $options $platform target=editor arch=arm64
-    mv $BINDIR/libspine_godot.macos.editor $TMPDIR/libspine_godot.macos.editor.arm64
-    scons -j $cpus $options $platform target=template_debug arch=arm64
-    mv $BINDIR/libspine_godot.macos.template_debug $TMPDIR/libspine_godot.macos.template_debug.arm64
-    scons -j $cpus $options $platform target=template_release arch=arm64
-    mv $BINDIR/libspine_godot.macos.template_release $TMPDIR/libspine_godot.macos.template_release.arm64
-
-    # Create universal binaries
-    echo "Creating universal binaries..."
-    lipo -create \
-        $TMPDIR/libspine_godot.macos.editor.x86_64 \
-        $TMPDIR/libspine_godot.macos.editor.arm64 \
-        -output $BINDIR/libspine_godot.macos.editor
-
-    lipo -create \
-        $TMPDIR/libspine_godot.macos.template_debug.x86_64 \
-        $TMPDIR/libspine_godot.macos.template_debug.arm64 \
-        -output $BINDIR/libspine_godot.macos.template_debug
-
-    lipo -create \
-        $TMPDIR/libspine_godot.macos.template_release.x86_64 \
-        $TMPDIR/libspine_godot.macos.template_release.arm64 \
-        -output $BINDIR/libspine_godot.macos.template_release
-
-    # Cleanup intermediate files
-    rm -rf $TMPDIR
-
-elif [ "$raw_platform" == "web" ]; then
+if [ "$raw_platform" == "web" ]; then
     BINDIR="example-v4-extension/bin/web"
     mkdir -p $BINDIR
 
@@ -150,10 +70,9 @@ elif [ "$raw_platform" == "web" ]; then
     echo "Building web without threads..."
     scons -j $cpus $options $platform target=template_debug threads=no
     scons -j $cpus $options $platform target=template_release threads=no
-
 else
     # Normal build process for other platforms
-    if [ "$raw_platform" != "android" ] && [ "$raw_platform" != "web" ]; then
+    if [ "$raw_platform" != "android" ] && [ "$raw_platform" != "ios" ] && [ "$raw_platform" != "web" ]; then
         scons -j $cpus $options $platform target=editor
     fi
     scons -j $cpus $options $platform target=template_debug

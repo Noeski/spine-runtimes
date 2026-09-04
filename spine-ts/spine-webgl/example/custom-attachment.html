@@ -22,8 +22,8 @@
 			}
 
 			loadAssets(canvas) {
-				canvas.assetManager.loadBinary("assets/spineboy-pro.skel");
-				canvas.assetManager.loadTextureAtlas("assets/spineboy-pma.atlas");
+				canvas.assetManager.loadBinary("/assets/spineboy-pro.skel");
+				canvas.assetManager.loadTextureAtlas("/assets/spineboy-pma.atlas");
 				canvas.assetManager.loadTexture("head.png");
 			}
 
@@ -31,7 +31,7 @@
 				let assetManager = canvas.assetManager;
 
 				// Create the texture atlas.
-				let atlas = assetManager.require("assets/spineboy-pma.atlas");
+				let atlas = assetManager.require("/assets/spineboy-pma.atlas");
 
 				// Create a AtlasAttachmentLoader that resolves region, mesh, boundingbox and path attachments
 				let atlasLoader = new spine.AtlasAttachmentLoader(atlas);
@@ -41,7 +41,7 @@
 
 				// Set the scale to apply during parsing, parse the file, and create a new skeleton.
 				skeletonBinary.scale = 1;
-				let skeletonData = skeletonBinary.readSkeletonData(assetManager.require("assets/spineboy-pro.skel"));
+				let skeletonData = skeletonBinary.readSkeletonData(assetManager.require("/assets/spineboy-pro.skel"));
 				this.skeleton = new spine.Skeleton(skeletonData);
 
 				// Create an AnimationState, and set the "run" animation in looping mode.
@@ -87,7 +87,7 @@
 				// Begin rendering.
 				renderer.begin();
 				// Draw the skeleton
-				renderer.drawSkeleton(this.skeleton, false);
+				renderer.drawSkeleton(this.skeleton, true);
 				// Complete rendering.
 				renderer.end();
 			}

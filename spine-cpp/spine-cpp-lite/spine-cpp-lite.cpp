@@ -1,16 +1,16 @@
 /******************************************************************************
  * Spine Runtimes License Agreement
- * Last updated July 28, 2023. Replaces all prior versions.
+ * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2023, Esoteric Software LLC
+ * Copyright (c) 2013-2025, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
  * conditions of Section 2 of the Spine Editor License Agreement:
  * http://esotericsoftware.com/spine-editor-license
  *
- * Otherwise, it is permitted to integrate the Spine Runtimes into software or
- * otherwise create derivative works of the Spine Runtimes (collectively,
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
  * "Products"), provided that each user of the Products must obtain their own
  * Spine Editor license and redistribution of the Products in any form must
  * include this license and copyright notice.
@@ -23,8 +23,8 @@
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
  * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
- * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #include "spine-cpp-lite.h"
@@ -624,7 +624,7 @@ void spine_skeleton_drawable_dispose(spine_skeleton_drawable drawable) {
 	if (_drawable->skeleton) delete (Skeleton *) _drawable->skeleton;
 	if (_drawable->animationState) delete (AnimationState *) _drawable->animationState;
 	if (_drawable->animationStateData) delete (AnimationStateData *) _drawable->animationStateData;
-	if (_drawable->animationStateEvents) delete (Vector<AnimationStateEvent> *) (_drawable->animationStateEvents);
+	if (_drawable->animationStateEvents) delete (EventListener *) (_drawable->animationStateEvents);
 	if (_drawable->renderer) delete (SkeletonRenderer *) _drawable->renderer;
 	SpineExtension::free(drawable, __FILE__, __LINE__);
 }
@@ -3007,7 +3007,10 @@ spine_skin_entries spine_skin_get_entries(spine_skin skin) {
 	_spine_skin_entries *entries = SpineExtension::getInstance()->calloc<_spine_skin_entries>(1, __FILE__, __LINE__);
 	{
 		Skin::AttachmentMap::Entries mapEntries = _skin->getAttachments();
-		while (mapEntries.hasNext()) entries->numEntries++;
+		while (mapEntries.hasNext()) {
+			entries->numEntries++;
+			mapEntries.next();
+		}
 	}
 	{
 		entries->entries = SpineExtension::getInstance()->calloc<_spine_skin_entry>(entries->numEntries, __FILE__, __LINE__);

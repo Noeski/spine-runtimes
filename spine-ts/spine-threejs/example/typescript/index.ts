@@ -13,7 +13,7 @@ let canvas: HTMLCanvasElement;
 let controls: OrbitControls;
 let lastFrameTime = Date.now() / 1000;
 
-let baseUrl = "assets/";
+let baseUrl = "/assets/";
 let skeletonFile = "raptor-pro.json";
 let atlasFile = skeletonFile
     .replace("-pro", "")

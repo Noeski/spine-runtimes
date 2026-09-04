@@ -39,10 +39,12 @@ Shader "Universal Render Pipeline/2D/Spine/Skeleton Lit" {
 			// Required to compile gles 2.0 with standard srp library
 			#pragma prefer_hlslcc gles
 			#pragma exclude_renderers d3d11_9x
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_0 __
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_1 __
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_2 __
-			#pragma multi_compile USE_SHAPE_LIGHT_TYPE_3 __
+			#if UNITY_VERSION < 60030000 // before  Unity 6000.3
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_0 __
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_1 __
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_2 __
+				#pragma multi_compile USE_SHAPE_LIGHT_TYPE_3 __
+			#endif // UNITY_VERSION < 60030000
 			#pragma multi_compile _ _LIGHT_AFFECTS_ADDITIVE
 			#pragma shader_feature _TINT_BLACK_ON
 
@@ -71,7 +73,13 @@ Shader "Universal Render Pipeline/2D/Spine/Skeleton Lit" {
 			#pragma vertex CombinedShapeLightVertex
 			#pragma fragment CombinedShapeLightFragment
 
-			#include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/LightingUtility.hlsl"
+			#if UNITY_VERSION < 60030000 // before Unity 6000.3
+				#include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/LightingUtility.hlsl"
+			#else
+				#include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/Core2D.hlsl"
+				#include_with_pragmas "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/ShapeLightShared.hlsl"
+			#endif
+
 			#define USE_URP
 			#include "../Include/SpineCoreShaders/Spine-Common.cginc"
 			#include "../Include/SpineCoreShaders/Spine-Skeleton-Tint-Common.cginc"
@@ -88,6 +96,7 @@ Shader "Universal Render Pipeline/2D/Spine/Skeleton Lit" {
 			TEXTURE2D(_MaskTex);
 			SAMPLER(sampler_MaskTex);
 
+		#if UNITY_VERSION < 60030000 // before Unity 6000.3
 			#if USE_SHAPE_LIGHT_TYPE_0
 			SHAPE_LIGHT(0)
 			#endif
@@ -103,6 +112,7 @@ Shader "Universal Render Pipeline/2D/Spine/Skeleton Lit" {
 			#if USE_SHAPE_LIGHT_TYPE_3
 			SHAPE_LIGHT(3)
 			#endif
+		#endif
 
 			Varyings CombinedShapeLightVertex(Attributes v)
 			{

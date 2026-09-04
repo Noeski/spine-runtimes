@@ -1,14 +1,11 @@
 #ifndef SPRITES_DEPTH_NORMALS_PASS_URP_INCLUDED
 #define SPRITES_DEPTH_NORMALS_PASS_URP_INCLUDED
 
-#include "Include/Spine-Sprite-Common-URP.hlsl"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/Spine-Sprite-Common-URP.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-#include "SpineCoreShaders/SpriteLighting.cginc"
-#include "SpineCoreShaders/Spine-Common.cginc"
-#include "Spine-Common-URP.hlsl"
-
-//#include "Include/Spine-Sprite-Common-URP.hlsl"
-//#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/SpriteLighting.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/SpineCoreShaders/Spine-Common.cginc"
+#include "Packages/com.esotericsoftware.spine.urp-shaders/Shaders/Include/Spine-Common-URP.hlsl"
 
 struct VaryingsSprite
 {
@@ -39,6 +36,7 @@ VaryingsSprite DepthNormalsVertexSprite(VertexInput input)
 
 	float backFaceSign = 1;
 #if defined(FIXED_NORMALS_BACKFACE_RENDERING)
+	float3 positionWS = TransformObjectToWorld(input.vertex.xyz);
 	backFaceSign = calculateBackfacingSign(positionWS.xyz);
 #endif
 

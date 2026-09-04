@@ -31,8 +31,8 @@
 
         const stage = new PIXI.Container();
 
-        PIXI.Assets.add({ alias: "spineboyData", src: "assets/spineboy-pro.skel" });
-        PIXI.Assets.add({ alias: "spineboyAtlas", src: "assets/spineboy-pma.atlas" });
+        PIXI.Assets.add({ alias: "spineboyData", src: "/assets/spineboy-pro.skel" });
+        PIXI.Assets.add({ alias: "spineboyAtlas", src: "/assets/spineboy-pma.atlas" });
         await PIXI.Assets.load(["spineboyData", "spineboyAtlas"]);
 
         const bounds = new PIXI.Rectangle(0, 0, 800, 600);
