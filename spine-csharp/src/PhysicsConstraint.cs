@@ -174,9 +174,8 @@ namespace Spine {
 							yOffset += u > qy ? qy : u < -qy ? -qy : u;
 							uy = by;
 						}
-						if (a >= t) {
-							d = (float)Math.Pow(damping, 60 * t);
-							float m = massInverse * t, e = strength, w = wind * f * skeleton.ScaleX, g = gravity * f * skeleton.ScaleY;
+						if (a > 0) {
+							float e = strength, w = wind * f * skeleton.ScaleX, g = gravity * f * skeleton.ScaleY;
 							do {
 								float t = (float)Math.Min(a, maximumPhysicsTimestep);
 								float m = massInverse * t;
